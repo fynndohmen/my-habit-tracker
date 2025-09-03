@@ -1,53 +1,50 @@
 <ion-header>
+  <!-- Titel-Zeile -->
   <ion-toolbar>
     <ion-title>Habits</ion-title>
+  </ion-toolbar>
+
+  <!-- Aktionen direkt unter dem Titel, stabil in allen WebViews -->
+  <ion-toolbar class="header-actions">
+    <div class="top-row">
+      <a class="top-btn add" [routerLink]="['/add']" aria-label="New habit">+</a>
+
+      <a class="top-btn settings" [routerLink]="['/settings']" aria-label="Settings">
+        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      </a>
+    </div>
   </ion-toolbar>
 </ion-header>
 
 <ion-content>
-
-  <!-- Top row: centered + and right-aligned settings -->
-  <div class="top-row">
-    <a class="top-btn add" [routerLink]="['/add']" aria-label="New habit">+</a>
-
-    <a class="top-btn settings" [routerLink]="['/settings']" aria-label="Settings">
-      <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-    </a>
-  </div>
-
   <ion-list>
-    <ion-item class="habit" lines="none"
-              *ngFor="let h of (habits$ | async); trackBy: trackById">
-
-      <!-- Entire card is holdable -->
-      <!-- CSS custom properties:
-           --p       : 0..100 progress for the frame
-           --hold    : 0..1 hold overlay fill
-           --progress: stroke color (set per-card) -->
-      <div class="habit-card"
-           [class.no-hold-anim]="noHoldAnim(h.id)"
-           [style.--p]="progress(h.id) * 100"
-           [style.--hold]="holdProgress(h.id)"
-           [style.--progress]="frameColor(h.id)"
-           (pointerdown)="startHold(h.id, $event)"
-           (pointerup)="endHold(h.id)"
-           (pointerleave)="endHold(h.id)"
-           (pointercancel)="endHold(h.id)">
-
+    <ion-item
+      class="habit"
+      lines="none"
+      *ngFor="let h of (habits$ | async); trackBy: trackById"
+    >
+      <div
+        class="habit-card"
+        [class.no-hold-anim]="noHoldAnim(h.id)"
+        [style.--p]="progress(h.id) * 100"
+        [style.--hold]="holdProgress(h.id)"
+        [style.--progress]="frameColor(h.id)"
+        (pointerdown)="startHold(h.id, $event)"
+        (pointerup)="endHold(h.id)"
+        (pointerleave)="endHold(h.id)"
+        (pointercancel)="endHold(h.id)"
+      >
         <div class="header">
           <div class="title-wrap">
             <div class="name">{{ h.name }}</div>
             <div class="count">{{ progressText(h.id) }}</div>
           </div>
 
-          <!-- Streak number on the far right -->
           <div class="streak" [style.color]="streakTextColor(h.id)">
             {{ currentStreak(h.id) }}
           </div>
         </div>
-
       </div>
     </ion-item>
   </ion-list>
-
 </ion-content>

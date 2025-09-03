@@ -1,7 +1,22 @@
+// mobile/src/app/pages/add-habit/add-habit.page.ts
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { IonicModule } from '@ionic/angular';
+
+// Ionic Standalone Components explizit importieren
+import {
+  IonHeader,
+  IonToolbar,
+  IonButtons,
+  IonBackButton,
+  IonTitle,
+  IonContent,
+  IonList,
+  IonItem,
+  IonInput,
+  IonButton,
+} from '@ionic/angular/standalone';
+
 import { Router } from '@angular/router';
 import { HabitService } from '../../habit.service';
 
@@ -10,7 +25,21 @@ import { HabitService } from '../../habit.service';
   selector: 'app-add-habit',
   templateUrl: './add-habit.page.html',
   styleUrls: ['./add-habit.page.scss'],
-  imports: [IonicModule, CommonModule, FormsModule],
+  // Wichtig: Back-Button & Co. explizit in "imports", damit sie sicher gebundlet werden
+  imports: [
+    CommonModule,
+    FormsModule,
+    IonHeader,
+    IonToolbar,
+    IonButtons,
+    IonBackButton,
+    IonTitle,
+    IonContent,
+    IonList,
+    IonItem,
+    IonInput,
+    IonButton,
+  ],
 })
 export class AddHabitPage {
   name = '';
