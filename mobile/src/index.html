@@ -1,13 +1,25 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>mobile</title>
-    <base href="/" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <title>habit tracker</title>
+
+    <!-- WICHTIG für Capacitor/Android: relative Pfade -->
+    <base href="./" />
+
+    <!-- Mobile & safe area -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="color-scheme" content="dark light" />
+
+    <!-- Build-Marker für schnelle Versionserkennung -->
+    <meta name="app-build" content="DEV" />
+
+    <!-- Favicon (verhindert 404 in DevTools) -->
+    <link rel="icon" type="image/x-icon" href="./favicon.ico" />
   </head>
   <body>
+    <!-- Root-Komponente deiner Angular/Ionic App -->
     <app-root></app-root>
   </body>
 </html>

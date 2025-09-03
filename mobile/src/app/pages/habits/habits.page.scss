@@ -1,0 +1,211 @@
+:host {
+  /* theme */
+  --page-bg: #0f1115;
+  --card-bg: #171a20;
+  --text: #fff;
+
+  /* frame + hold */
+  --stroke: 2px;
+  --radius: 999px;
+  --progress-track: rgba(255, 255, 255, 0.45);
+  --hold-tint: rgba(255, 255, 255, 0.08);
+
+  /* per-card color comes from TS via [style.--progress] */
+  --progress: #ffc400; /* default if none provided */
+
+  /* spacing for the streak number at the far right */
+  --streak-right-gap: 8px;
+}
+
+/* Header dark + bigger title (you asked: +8px from default) */
+ion-header,
+ion-toolbar {
+  --background: var(--page-bg);
+  --color: var(--text);
+  --border-width: 0;
+  --border-color: transparent;
+  box-shadow: none;
+}
+ion-title {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+/* Content safely dark (also shadow parts) */
+ion-content {
+  --background: var(--page-bg);
+}
+ion-content::part(background),
+ion-content::part(scroll) {
+  background: var(--page-bg) !important;
+}
+ion-content::part(fixed) {
+  background: transparent !important;
+  pointer-events: none; /* don’t swallow clicks for the top buttons */
+}
+
+/* =========================
+   Top row: centered + and right-aligned settings
+   ========================= */
+.top-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr; /* left spacer | center | right */
+  align-items: center;
+  padding: 12px 12px 4px;
+  gap: 8px;
+}
+.top-btn {
+  pointer-events: auto; /* override fixed-layer rule above */
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  line-height: 1;
+  cursor: pointer;
+  padding: 6px;
+  text-decoration: none; /* for <a> */
+}
+.top-btn.add {
+  grid-column: 2; /* perfectly centered */
+  font-size: 30px;
+  font-weight: 700;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.top-btn.settings {
+  grid-column: 3;
+  justify-self: end; /* flush right */
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.top-btn.settings .dot {
+  width: 4px;
+  height: 4px;
+  background: currentColor;
+  border-radius: 50%;
+  display: inline-block;
+  margin-left: 3px;
+}
+.top-btn.settings .dot:first-child {
+  margin-left: 0;
+}
+@media (pointer: fine) {
+  .top-btn:hover {
+    filter: none; /* no hover glow */
+  }
+}
+
+/* List transparent */
+ion-list,
+ion-list::part(container) {
+  background: transparent !important;
+}
+
+/* Row spacing */
+ion-list {
+  margin-top: 8px;
+}
+ion-item.habit {
+  --background: transparent;
+  --padding-start: 12px;
+  --inner-padding-end: 12px;
+  margin-bottom: 20px;
+}
+
+/* ==== Card ==== */
+.habit-card {
+  position: relative;
+  display: block;
+  width: 100%;
+  border-radius: var(--radius);
+  padding: 16px 14px;
+  background:
+    /* hold overlay – width by --hold (0..1) */
+    linear-gradient(to right, var(--hold-tint), var(--hold-tint)) 0 / calc(var(--hold, 0) * 100%) 100% no-repeat,
+    var(--card-bg);
+  color: var(--text);
+  user-select: none;
+  transition: background-size 0.12s linear; /* smooth fill while holding */
+
+  /* After successful hold we remove reverse animation via .no-hold-anim */
+  &.no-hold-anim {
+    transition: none;
+  }
+
+  /* Track (base frame) */
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius);
+    box-shadow: 0 0 0 var(--stroke) var(--progress-track) inset;
+    pointer-events: none;
+  }
+
+  /* Progress frame with a HARD vertical edge left->right */
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius);
+    box-shadow: 0 0 0 var(--stroke) var(--progress) inset;
+
+    /* hard cut at --p% using mask (keeps your “good proportions”) */
+    --pR: calc(var(--p, 0) * 1%);
+    -webkit-mask: linear-gradient(to right, #000 var(--pR), transparent var(--pR));
+    mask: linear-gradient(to right, #000 var(--pR), transparent var(--pR));
+
+    pointer-events: none;
+    transition: -webkit-mask 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+      mask 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* header row inside a card */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .title-wrap {
+    min-width: 0;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 10px;
+    flex: 1 1 auto;
+  }
+
+  .name {
+    font-weight: 700;
+    font-size: 20px; /* keep original size */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text);
+  }
+
+  .count {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    font-weight: 600;
+    font-size: 18px; /* keep original size */
+    color: rgba(255, 255, 255, 0.75);
+  }
+
+  /* streak number on the far right; color is set inline from TS */
+  .streak {
+    flex: 0 0 auto;
+    margin-left: auto;
+    margin-right: var(--streak-right-gap);
+    font-weight: 800;
+    font-size: 18px; /* keep in-card scale */
+    line-height: 1;
+  }
+}

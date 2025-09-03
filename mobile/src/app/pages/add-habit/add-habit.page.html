@@ -1,0 +1,48 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/"></ion-back-button>
+    </ion-buttons>
+    <ion-title>New habit</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content fullscreen>
+  <ion-list>
+
+    <!-- NAME -->
+    <ion-item lines="none" class="card">
+      <div class="row field">
+        <div class="label">Name</div>
+        <!-- Placeholder linksbündig direkt rechts neben dem Label -->
+        <ion-input
+          class="inline-input"
+          [(ngModel)]="name"
+          type="text"
+          placeholder="e.g. drink water"
+          autocapitalize="sentences"
+          clear-input="true">
+        </ion-input>
+      </div>
+    </ion-item>
+
+    <!-- WIEDERHOLUNGEN -->
+    <ion-item lines="none" class="card">
+      <div class="row head">
+        <div class="label">Repetitions per day</div>
+        <div class="value">{{ repeats }}</div>
+        <div class="spacer"></div>
+      </div>
+
+      <div class="row stepper-row">
+        <ion-button class="stepper-btn" fill="clear" (click)="dec()" aria-label="Weniger">–</ion-button>
+        <ion-button class="stepper-btn" fill="clear" (click)="inc()" aria-label="Mehr">+</ion-button>
+      </div>
+    </ion-item>
+
+  </ion-list>
+
+  <div class="actions">
+    <ion-button class="save" (click)="save()" [disabled]="!name.trim()">Save</ion-button>
+  </div>
+</ion-content>

@@ -1,13 +1,11 @@
+// mobile/src/app/app.ts
 import { Component } from '@angular/core';
-import { RouterModule } from '@angular/router';
-import { NxWelcome } from './nx-welcome';
+import { IonApp, IonRouterOutlet } from '@ionic/angular/standalone';
 
 @Component({
-  imports: [NxWelcome, RouterModule],
+  standalone: true,
   selector: 'app-root',
   templateUrl: './app.html',
-  styleUrl: './app.scss',
+  imports: [IonApp, IonRouterOutlet],
 })
-export class App {
-  protected title = 'mobile';
-}
+export class AppComponent {}

@@ -1,0 +1,83 @@
+/* ========= Global App Styles (mobile/src/app/app.scss) ========= */
+
+/* Dark theme baseline */
+:root {
+  --ion-background-color: #0d0f13;
+  --ion-text-color: #e6e6e6;
+
+  /* Card/Item surfaces */
+  --ion-card-background: #151923;
+  --ion-item-background: #151923;
+
+  /* Primary accents (du hattest farbige Ränder für den Fortschritt) */
+  --brand-yellow: #f4c21f;
+  --brand-green:  #43d17a;
+  --brand-cyan:   #34d0e3;
+  --brand-violet: #9a6cff;
+  --brand-pink:   #ff4fd8;
+  --brand-red:    #ff4d57;
+}
+
+/* Grundlayout */
+ion-app, ion-content, ion-page {
+  background: var(--ion-background-color);
+  color: var(--ion-text-color);
+}
+
+/* WICHTIG: Nichts soll die Pointer-Events über dem Content „schlucken“ */
+ion-content::part(fixed),
+ion-content::part(scroll),
+ion-content::part(background) {
+  pointer-events: auto !important;
+}
+
+/* Standard-Padding im Content */
+ion-content {
+  --padding-start: 16px;
+  --padding-end: 16px;
+  --padding-top: 8px;
+  --padding-bottom: 16px;
+}
+
+/* Typische Toolbar-Höhenkorrektur mit translucent Header */
+ion-header[translucent="true"] + ion-content {
+  --padding-top: 56px; /* md-Toolbar */
+}
+
+/* Karten/Listenabstände (Habits) */
+.habit-card,
+ion-item.habit-row {
+  margin: 8px 0;
+  border-radius: 14px;
+  background: var(--ion-card-background);
+}
+
+/* Fortschritt-Umrandungen – Beispielklassen, falls genutzt */
+.habit-border-yellow { border: 2px solid var(--brand-yellow); }
+.habit-border-green  { border: 2px solid var(--brand-green);  }
+.habit-border-cyan   { border: 2px solid var(--brand-cyan);   }
+.habit-border-violet { border: 2px solid var(--brand-violet); }
+.habit-border-pink   { border: 2px solid var(--brand-pink);   }
+.habit-border-red    { border: 2px solid var(--brand-red);    }
+
+/* Buttons, Inputs – gut lesbar auf Dark */
+ion-button {
+  --background: #2a2f3a;
+  --background-activated: #343a47;
+  --color: #fff;
+  --border-radius: 12px;
+}
+
+ion-input, ion-textarea, ion-select, ion-range {
+  --background: #11151c;
+  --color: var(--ion-text-color);
+  --placeholder-color: #9aa3af;
+  --padding-start: 12px;
+  --padding-end: 12px;
+  border-radius: 10px;
+}
+
+/* Kleinere Helfer */
+.mt-8 { margin-top: 8px; }
+.mt-12 { margin-top: 12px; }
+.mt-16 { margin-top: 16px; }

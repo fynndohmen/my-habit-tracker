@@ -1,0 +1,130 @@
+:host {
+  /* Farben wie auf der Add-Habit-Seite */
+  --page-bg: #0f1115;
+  --card-bg: #171a20;
+  --text: #ffffff;
+  --muted: rgba(255, 255, 255, 0.65);
+  --accent: #ffc400;
+
+  /* Typo-Grundgröße (vorher 20px) → 18px */
+  --font-base: 18px;
+
+  /* Abstand innerhalb der Karten */
+  --card-gap: 12px;
+}
+
+/* Header dunkel */
+ion-header,
+ion-toolbar {
+  --background: var(--page-bg);
+  --color: var(--text);
+  --border-width: 0;
+  --border-color: transparent;
+  box-shadow: none;
+}
+/* Titel 2px kleiner (vorher 22px) → 20px */
+ion-title {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+/* Content sicher dunkel */
+ion-content {
+  --background: var(--page-bg);
+}
+ion-content::part(background),
+ion-content::part(scroll) {
+  background: var(--page-bg) !important;
+}
+ion-content::part(fixed) {
+  background: transparent !important;
+}
+
+/* Liste */
+ion-list,
+ion-list::part(container) {
+  background: transparent !important;
+  padding: 0 16px;
+  margin: 12px 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Karten-Stil */
+ion-item.card {
+  --background: var(--card-bg);
+  --color: var(--text);
+  --padding-start: 14px;
+  --inner-padding-end: 14px;
+  --min-height: 84px;
+  border-radius: 16px;
+
+  /* Text im Card-Inhalt insgesamt etwas kleiner */
+  font-size: var(--font-base);
+}
+ion-item.card::part(native) {
+  background: var(--card-bg);
+  border-radius: 16px;
+}
+
+/* Layout: Name oben (Zeile 1), Streaks darunter (Zeile 2), Delete rechts über beide Zeilen */
+.row {
+  display: grid;
+  grid-template-columns: 1fr auto;     /* Inhalt | Delete */
+  grid-template-rows: auto auto;        /* Name | Streaks */
+  align-items: center;
+  gap: var(--card-gap);
+  width: 100%;
+}
+
+/* Name – oben, volle Breite linke Spalte */
+.name {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+  font-weight: 800;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Streaks – zweite Zeile, linke Spalte */
+.streaks {
+  grid-column: 1;
+  grid-row: 2;
+  color: var(--muted);
+  line-height: 1.25;
+  text-align: left;
+}
+.streaks .line {
+  white-space: nowrap;
+}
+.streaks .num {
+  font-weight: 900;
+  color: var(--text); /* Basis – exakte Farbe kommt per TS */
+  margin-left: 6px;
+}
+
+/* Delete-Button – rechte Spalte, über beide Zeilen */
+ion-button.delete {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  justify-self: end;
+
+  --padding-start: 10px;
+  --padding-end: 10px;
+  min-width: 40px;
+  height: 40px;
+  line-height: 1;
+  --background: transparent;
+  --background-hover: transparent;
+  --background-activated: transparent;
+  --background-focused: transparent;
+  color: #ff6b6b;
+
+  /* 2px kleiner (vorher 20px) → 18px */
+  font-size: 18px;
+}
+ion-button.delete::part(native) { transition: none; }

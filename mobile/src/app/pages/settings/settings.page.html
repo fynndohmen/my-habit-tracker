@@ -1,0 +1,53 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Settings</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content fullscreen>
+  <ion-list>
+    <ion-item
+      lines="none"
+      class="card"
+      *ngFor="let h of (habits$ | async); trackBy: trackById"
+    >
+      <!-- Grid: Name oben, darunter die Streaks; Delete rechts, über beide Zeilen -->
+      <div class="row">
+        <div class="name">{{ h.name }}</div>
+
+        <div class="streaks">
+          <div class="line">
+            Current&nbsp;streak:
+            <span class="num" [style.color]="colorCurrent(h.id)">
+              {{ currentStreak(h.id) }}
+            </span>
+          </div>
+          <div class="line">
+            Longest&nbsp;streak:
+            <span class="num" [style.color]="colorLongest(h.id)">
+              {{ longestStreak(h.id) }}
+            </span>
+          </div>
+        </div>
+
+        <ion-button
+          class="delete"
+          fill="clear"
+          (click)="confirmDelete(h.id, $event)"
+          aria-label="Delete"
+        >✕</ion-button>
+      </div>
+    </ion-item>
+  </ion-list>
+
+  <ion-alert
+    [isOpen]="alertOpen"
+    header="Delete permanently?"
+    message="This habit will be removed."
+    [buttons]="alertButtons"
+    (didDismiss)="alertOpen = false">
+  </ion-alert>
+</ion-content>

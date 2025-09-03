@@ -1,0 +1,153 @@
+:host {
+  --page-bg: #0f1115;
+  --card-bg: #171a20;
+  --text: #ffffff;
+  --muted: rgba(255, 255, 255, .65);
+  --accent: #ffc400;
+
+  /* Einheitliche Schriftgröße wie in den Kacheln (Name = 20px) */
+  --fs: 20px;
+}
+
+/* Header */
+ion-header, ion-toolbar {
+  --background: var(--page-bg);
+  --color: var(--text);
+  --border-width: 0;
+  --border-color: transparent;
+  box-shadow: none;
+}
+ion-title { font-size: var(--fs); font-weight: 700; }
+
+/* Content dunkel erzwingen */
+ion-content { --background: var(--page-bg); }
+ion-content::part(background),
+ion-content::part(scroll) { background: var(--page-bg) !important; }
+ion-content::part(fixed) { background: transparent !important; }
+
+/* Liste */
+ion-list,
+ion-list::part(container) {
+  background: transparent !important;
+  padding: 0 16px;
+  margin: 12px 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: var(--fs); /* Fallback: alles im Listengebiet auf --fs */
+  color: var(--text);
+}
+
+/* Kacheln */
+ion-item.card {
+  --background: var(--card-bg);
+  --color: var(--text);
+  --padding-start: 14px;
+  --inner-padding-end: 14px;
+  --min-height: 84px;
+  border-radius: 16px;
+}
+ion-item.card::part(native) {
+  background: var(--card-bg);
+  border-radius: 16px;
+}
+
+/* Layout-Zeilen */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+/* LABELS */
+.field .label,
+.head .label {
+  font-size: var(--fs);
+  font-weight: 800;
+  color: var(--text);
+  flex: 0 0 auto;
+}
+
+/* INPUT – inline neben „Name“ (Placeholder linksbündig) */
+ion-input.inline-input {
+  flex: 1 1 auto;
+  --padding-top: 0;
+  --padding-bottom: 0;
+  --color: var(--text);
+  min-height: 48px;
+}
+ion-input.inline-input::part(native) {
+  font-size: var(--fs);
+  font-weight: 800;
+  text-align: left;
+}
+ion-input.inline-input::part(native)::placeholder {
+  color: var(--muted);
+  font-size: var(--fs);
+  font-weight: 800;
+}
+
+/* Wiederholungszahl – gleiche Größe, nur farblich betont */
+.head .value {
+  font-size: var(--fs);
+  font-weight: 900;
+  color: var(--accent);
+  margin-left: 8px;
+  white-space: nowrap;
+}
+.head .spacer { flex: 1 1 auto; }
+
+/* Stepper rechtsbündig */
+.stepper-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+/* Stepper-Buttons – gleiche Schriftgröße, keine Hover-Effekte */
+.stepper-btn {
+  --padding-start: 10px;
+  --padding-end: 10px;
+  height: 44px;
+  min-width: 44px;
+  font-size: var(--fs);
+  font-weight: 900;
+  color: var(--text);
+
+  --background: transparent;
+  --background-hover: transparent;
+  --background-activated: transparent;
+  --background-focused: transparent;
+  --color-hover: var(--text);
+  --color-activated: var(--text);
+  --box-shadow: none;
+  --opacity: 1;
+}
+.stepper-btn::part(native) { transition: none; }
+.stepper-btn:hover,
+.stepper-btn:active,
+.stepper-btn:focus { opacity: 1 !important; }
+.stepper-btn:focus-visible { outline: none; }
+
+/* Ripple (Material Mode) aus */
+:host-context(.md) .stepper-btn ion-ripple-effect { display: none !important; }
+
+/* Footer / Speichern-Button */
+.actions {
+  padding: 0 16px 24px;
+  display: flex;
+  justify-content: flex-end;
+}
+.actions .save {
+  --background: var(--accent);
+  --color: #1b1b1b;
+  --border-radius: 14px;
+  height: 48px;
+  padding: 0 18px;
+  font-weight: 800;
+  letter-spacing: .2px;
+  font-size: var(--fs);
+}

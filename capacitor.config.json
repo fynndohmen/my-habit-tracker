@@ -1,0 +1,6 @@
+{
+  "appId": "com.fynndohmen.habittracker",
+  "appName": "habit tracker",
+  "webDir": "dist/mobile",
+  "bundledWebRuntime": false
+}
