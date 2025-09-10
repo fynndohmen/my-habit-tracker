@@ -1,54 +1,82 @@
+// android/app/build.gradle
 apply plugin: 'com.android.application'
 
 android {
-    namespace "com.fynndohmen.habittracker"
-    compileSdk rootProject.ext.compileSdkVersion
-    defaultConfig {
-        applicationId "com.fynndohmen.habittracker"
-        minSdkVersion rootProject.ext.minSdkVersion
-        targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        aaptOptions {
-             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
-             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
-            ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
-        }
+  namespace "com.fynndohmen.habittracker"
+  compileSdk rootProject.ext.compileSdkVersion
+
+  defaultConfig {
+    applicationId "com.fynndohmen.habittracker"
+    minSdkVersion rootProject.ext.minSdkVersion
+    targetSdkVersion rootProject.ext.targetSdkVersion
+    versionCode 1
+    versionName "1.0"
+    testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+    aaptOptions {
+      // Standard-Assets ausschließen (für moderne Web-Apps)
+      ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
     }
-    buildTypes {
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-        }
+  }
+
+  // ===== Keystore-Variablen (ANDERE NAMEN als die DSL-Eigenschaften!) =====
+  def ksPath           = project.findProperty('MYAPP_STORE_FILE')      ?: System.getenv('MYAPP_STORE_FILE')
+  def ksFile           = ksPath ? file(ksPath) : null
+  def ksStorePassword  = project.findProperty('MYAPP_STORE_PASSWORD')  ?: System.getenv('MYAPP_STORE_PASSWORD')
+  def ksKeyAlias       = project.findProperty('MYAPP_KEY_ALIAS')       ?: System.getenv('MYAPP_KEY_ALIAS')
+  def ksKeyPassword    = project.findProperty('MYAPP_KEY_PASSWORD')    ?: System.getenv('MYAPP_KEY_PASSWORD')
+
+  signingConfigs {
+    release {
+      if (ksFile != null && ksFile.exists() && ksStorePassword && ksKeyAlias && ksKeyPassword) {
+        storeFile ksFile
+        storePassword ksStorePassword
+        keyAlias ksKeyAlias
+        keyPassword ksKeyPassword
+      } else {
+        println("WARNING: Release keystore nicht konfiguriert – Release wird UNSIGNIERT gebaut.")
+      }
     }
+  }
+
+  buildTypes {
+    release {
+      signingConfig signingConfigs.release
+      minifyEnabled true
+      shrinkResources true
+      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+    }
+    debug {
+      // Debug-Einstellungen wie gehabt
+    }
+  }
 }
 
 repositories {
-    flatDir{
-        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
-    }
+  flatDir {
+    dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+  }
 }
 
 dependencies {
-    implementation fileTree(include: ['*.jar'], dir: 'libs')
-    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
-    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
-    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
-    implementation project(':capacitor-android')
-    testImplementation "junit:junit:$junitVersion"
-    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
-    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
-    implementation project(':capacitor-cordova-android-plugins')
+  implementation fileTree(include: ['*.jar'], dir: 'libs')
+  implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+  implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+  implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+  implementation project(':capacitor-android')
+  testImplementation "junit:junit:$junitVersion"
+  androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+  androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+  implementation project(':capacitor-cordova-android-plugins')
 }
 
 apply from: 'capacitor.build.gradle'
 
 try {
-    def servicesJSON = file('google-services.json')
-    if (servicesJSON.text) {
-        apply plugin: 'com.google.gms.google-services'
-    }
+  def servicesJSON = file('google-services.json')
+  if (servicesJSON.text) {
+    apply plugin: 'com.google.gms.google-services'
+  }
 } catch(Exception e) {
-    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+  logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
 }

@@ -22,8 +22,8 @@ org.gradle.jvmargs=-Xmx1536m
 android.useAndroidX=true
 
 # --- Release signing (lokal) ---
-
-MYAPP_STORE_FILE=/Users/fynn/Projects/my-habit-tracker/android/keystores/habit-release.keystore
-MYAPP_STORE_PASSWORD=myStrongPass123!
+MYAPP_STORE_FILE=/Users/fynn/Projects/my-habit-tracker/android/keystores/habit.keystore
+MYAPP_STORE_PASSWORD=storepass2345
 MYAPP_KEY_ALIAS=habit
-MYAPP_KEY_PASSWORD=myStrongPass123!
+MYAPP_KEY_PASSWORD=keypass2345
+
