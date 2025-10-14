@@ -4,13 +4,13 @@ import { FormsModule } from '@angular/forms';
 import {
   IonHeader, IonToolbar, IonButtons, IonBackButton, IonTitle,
   IonContent, IonList, IonItem, IonInput, IonButton,
-  IonModal, IonDatetime
+  IonModal, IonDatetime, IonIcon
 } from '@ionic/angular/standalone';
 import { Router } from '@angular/router';
-import { HabitService } from '../../habit.service';
+import { HabitService, Period } from '../../habit.service';
 import { NotificationService, HabitNotification as Notif } from '../../services/notification.service';
-
-type Period = 'day' | 'week' | 'month';
+import { addIcons } from 'ionicons';
+import { alarmOutline } from 'ionicons/icons';
 
 @Component({
   standalone: true,
@@ -21,36 +21,38 @@ type Period = 'day' | 'week' | 'month';
     CommonModule, FormsModule,
     IonHeader, IonToolbar, IonButtons, IonBackButton, IonTitle,
     IonContent, IonList, IonItem, IonInput, IonButton,
-    IonModal, IonDatetime
+    IonModal, IonDatetime, IonIcon
   ],
 })
 export class AddHabitPage {
-  // --- Formularzustand ---
+  constructor() {
+    addIcons({ 'alarm-outline': alarmOutline });
+  }
+
   name = '';
   repeats = 1;
-  period: Period = 'day';
+  period: Period = 'day'; // 'day' | 'week' | 'month'
 
-  // Notifications UI-State
   notifications: Notif[] = [];
+
+  // Modal-State
   notifOpen = false;
   notifTimeIso = this.isoNowRounded();
-  readonly WEEKDAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+  readonly WEEKDAYS = ['Mo','Tu','We','Th','Fr','Sa','Su'];
   tempDays: number[] = [];
 
   private readonly habitSvc = inject(HabitService);
   private readonly router = inject(Router);
   private readonly notifSvc = inject(NotificationService);
 
-  // ==== Period ====
-  setPeriod(p: Period): void {
-    this.period = p;
-  }
+  /** Period umschalten */
+  setPeriod(p: Period) { this.period = p; }
 
-  // ==== Counter ====
+  /** Stepper */
   inc(): void { this.repeats = Math.min(999, (this.repeats || 1) + 1); }
   dec(): void { this.repeats = Math.max(1, (this.repeats || 1) - 1); }
 
-  // ==== Notifications Modal ====
+  /** Modal öffnen/schließen */
   openNotifModal(): void {
     this.notifTimeIso = this.isoNowRounded();
     this.tempDays = [];
@@ -58,52 +60,58 @@ export class AddHabitPage {
   }
   closeNotif(): void { this.notifOpen = false; }
 
-  onTimePicked(ev: CustomEvent): void {
-    const val = (ev?.detail as any)?.value;
-    if (typeof val === 'string' && val) {
-      this.notifTimeIso = val;
-    }
+  /** Zeit aus IonDatetime übernehmen */
+  onTimePicked(ev: CustomEvent) {
+    const v = (ev?.detail as any)?.value;
+    if (typeof v === 'string') this.notifTimeIso = v;
   }
 
+  /** Wochentage toggeln */
   toggleDay(idx: number): void {
     const i = this.tempDays.indexOf(idx);
-    if (i >= 0) this.tempDays.splice(i, 1); else this.tempDays.push(idx);
+    if (i >= 0) this.tempDays.splice(i, 1);
+    else this.tempDays.push(idx);
     this.tempDays.sort((a, b) => a - b);
   }
 
+  /** Notification bestätigen – wenn keine Tage gewählt: Default = alle Tage */
   confirmNotif(): void {
     const d = new Date(this.notifTimeIso || new Date());
     const hour = d.getHours();
     const minute = d.getMinutes();
-
-    // Deutsch: Wenn keine Tage gewählt → Default = alle Tage (täglich)
-    const days = this.tempDays.length ? [...this.tempDays] : [0,1,2,3,4,5,6];
-
+    const days = this.tempDays.length ? [...this.tempDays] : [0,1,2,3,4,5,6]; // Default Mo–So
     this.notifications.push({ hour, minute, days });
-    this.notifOpen = false;
+    this.closeNotif();
   }
+
+  /** Entfernen (per Index) */
+  removeNotif(i: number): void {
+    if (i >= 0 && i < this.notifications.length) {
+      this.notifications.splice(i, 1);
+    }
+  }
+
+  /** trackBy: korrekte Signatur (index, item) */
+  trackByIndex = (index: number, _item: Notif) => index;
 
   formatDays(days: number[]): string {
-    const labels = ['Mo','Tu','We','Th','Fr','Sa','Su'];
-    return labels.filter((_, i) => days.includes(i)).join(', ') || '';
+    const labels = this.WEEKDAYS;
+    return labels.filter((_, i) => days.includes(i)).join(', ');
   }
-
-  removeNotif(i: number): void { this.notifications.splice(i, 1); }
-  trackByIndex = (index: number) => index; // << wichtig für *ngFor trackBy
 
   private isoNowRounded(): string { const d = new Date(); d.setSeconds(0,0); return d.toISOString(); }
 
-  // ==== Speichern ====
+  /** Save: Habit + Notifications persistieren und (falls erlaubt) planen */
   async save(): Promise<void> {
     const n = this.name.trim();
     if (!n) return;
 
     const r = Math.max(1, Math.floor(this.repeats || 1));
-    const newId = (this.habitSvc as any).addHabit?.(n, r, this.period, this.notifications);
+    const newId = this.habitSvc.addHabit(n, r, this.period, this.notifications);
 
     if (this.notifications.length > 0) {
       const granted = await this.notifSvc.ensurePermission();
-      if (granted && newId) {
+      if (granted) {
         await this.notifSvc.scheduleForHabit(newId, n, this.notifications);
       }
     }

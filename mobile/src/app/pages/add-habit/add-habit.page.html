@@ -25,28 +25,29 @@
       </div>
     </ion-item>
 
-    <!-- PERIOD (Tabs: Day / Week / Month – aktive in Gelb) -->
+    <!-- PERIOD -->
     <ion-item lines="none" class="card">
       <div class="row head">
         <div class="label">Period</div>
         <div class="spacer"></div>
-
         <div class="period-tabs">
-          <button class="tab" [class.active]="period==='day'" (click)="setPeriod('day')">DAY</button>
-          <button class="tab" [class.active]="period==='week'" (click)="setPeriod('week')">WEEK</button>
+          <button class="tab" [class.active]="period==='day'"   (click)="setPeriod('day')">DAY</button>
+          <button class="tab" [class.active]="period==='week'"  (click)="setPeriod('week')">WEEK</button>
           <button class="tab" [class.active]="period==='month'" (click)="setPeriod('month')">MONTH</button>
         </div>
       </div>
     </ion-item>
 
-    <!-- REPETITIONS (Counter zwischen – und +) -->
+    <!-- REPETITIONS -->
     <ion-item lines="none" class="card">
       <div class="row head">
-        <div class="label">Repetitions per {{ period }}</div>
+        <div class="label">Repetitions<br />per {{ period }}</div>
         <div class="spacer"></div>
+
+        <!-- Stepper: -  [value]  + -->
         <div class="stepper-row">
           <ion-button class="stepper-btn" fill="clear" (click)="dec()" aria-label="Less">–</ion-button>
-          <div class="value-inline" aria-live="polite">{{ repeats }}</div>
+          <div class="value-inline">{{ repeats }}</div>
           <ion-button class="stepper-btn" fill="clear" (click)="inc()" aria-label="More">+</ion-button>
         </div>
       </div>
@@ -56,13 +57,23 @@
     <ion-item
       lines="none"
       class="card notif-card"
-      [class.has-rows]="(notifications?.length ?? 0) > 0">
+      [class.has-rows]="notifications.length > 0">
       <div class="notif-wrap">
-        <button class="notif-header" (click)="openNotifModal()">
-          <span class="plus">+</span>
-          <span>Add notification</span>
-        </button>
 
+        <!-- Kopfzeile: Text + Alarm links, Plus rechts als Button -->
+        <div class="notif-header">
+          <span class="label">Add notification</span>
+          <ion-icon class="alarm" name="alarm-outline" aria-hidden="true"></ion-icon>
+          <div class="spacer"></div>
+          <ion-button
+            class="notif-plus"
+            fill="clear"
+            (click)="openNotifModal()"
+            aria-label="Add notification"
+          >+</ion-button>
+        </div>
+
+        <!-- gespeicherte Notifications -->
         <div
           class="notif-row"
           *ngFor="let n of notifications; index as i; trackBy: trackByIndex">
@@ -82,8 +93,16 @@
     <ion-button class="save" (click)="save()" [disabled]="!name.trim()">Save</ion-button>
   </div>
 
-  <!-- Modal: dunkles, undurchsichtiges Wheel (gelber aktiver Wert) -->
-  <ion-modal [isOpen]="notifOpen" (didDismiss)="notifOpen=false" class="modal-content">
+  <!-- ==== MODAL: Add reminder ==== -->
+  <ion-modal
+    class="modal-content"
+    [isOpen]="notifOpen"
+    (didDismiss)="closeNotif()"
+    [backdropDismiss]="true"
+    [canDismiss]="true"
+    [breakpoints]="[1]"
+    [initialBreakpoint]="1">
+
     <ng-template>
       <div class="modal-backdrop">
         <div class="modal-panel">
@@ -95,6 +114,7 @@
               presentation="time"
               [preferWheel]="true"
               [value]="notifTimeIso"
+              color="warning"
               (ionChange)="onTimePicked($event)">
             </ion-datetime>
           </div>
@@ -102,7 +122,7 @@
           <div class="weekday-row">
             <button
               class="day-pill"
-              *ngFor="let d of WEEKDAYS; index as i"
+              *ngFor="let d of WEEKDAYS; let i = index"
               [class.active]="tempDays.includes(i)"
               (click)="toggleDay(i)">
               {{ d }}

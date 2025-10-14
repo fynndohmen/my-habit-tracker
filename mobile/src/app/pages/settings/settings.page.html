@@ -14,7 +14,6 @@
       class="card"
       *ngFor="let h of (habits$ | async); trackBy: trackById"
     >
-      <!-- links Inhalt, rechts Actions -->
       <div class="row">
         <div class="name">{{ h.name }}</div>
 
@@ -33,20 +32,19 @@
           </div>
         </div>
 
-        <!-- RECHTS: Aktionen -->
         <div class="actions">
-          <!-- Notifications bearbeiten -->
+          <!-- Alarm (Edit notifications) -->
           <ion-button
-            class="notif"
+            class="alarm"
             fill="clear"
             size="small"
-            [routerLink]="['/edit-notifications', h.id]"
             aria-label="Edit notifications"
+            [routerLink]="['/edit-notifications', h.id]"
           >
             <ion-icon name="alarm-outline" slot="icon-only"></ion-icon>
           </ion-button>
 
-          <!-- Reset (kreisförmiger Pfeil) -->
+          <!-- Reset -->
           <ion-button
             class="reset"
             fill="clear"
@@ -57,7 +55,7 @@
             <ion-icon name="refresh-outline" slot="icon-only"></ion-icon>
           </ion-button>
 
-          <!-- Delete (X) -->
+          <!-- Delete -->
           <ion-button
             class="delete"
             fill="clear"

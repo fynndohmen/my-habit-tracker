@@ -37,7 +37,7 @@ ion-list::part(container) {
   color: var(--text);
 }
 
-/* Außenkacheln: Standard eckig (0px) */
+/* Außenkacheln (eckig, um Modal-Wheel nicht zu beeinflussen) */
 ion-item.card {
   --background: var(--card-bg);
   --color: var(--text);
@@ -49,23 +49,6 @@ ion-item.card {
 ion-item.card::part(native) {
   background: var(--card-bg);
   border-radius: 0;
-}
-
-/* NUR die erste Karte: obere Ecken abrunden (4px) */
-ion-list > ion-item.card:first-child::part(native) {
-  border-top-left-radius: 4px;
-  border-top-right-radius: 4px;
-}
-
-/* NUR die letzte Karte: untere Ecken abrunden (4px) */
-ion-list > ion-item.card:last-child::part(native) {
-  border-bottom-left-radius: 4px;
-  border-bottom-right-radius: 4px;
-}
-
-/* Sonderfall: wenn es nur eine einzige Karte gibt → alle 4 Ecken 4px */
-ion-list > ion-item.card:first-child:last-child::part(native) {
-  border-radius: 4px;
 }
 
 /* Zeilen-Layout in Karten */
@@ -119,6 +102,7 @@ ion-input.inline-input::part(native)::placeholder {
   font-weight: 900;
   padding: 8px 2px;
   line-height: 1;
+  cursor: pointer;
 }
 .period-tabs .tab.active { color: var(--accent); }
 
@@ -173,7 +157,7 @@ ion-item.card.notif-card.has-rows::part(native) { padding-bottom: 16px; }
   padding-bottom: 0;
 }
 
-/* Kopfzeile (+ Add notification) – volle Breite */
+/* Kopfzeile: Text + Alarm links, Plus rechts */
 .notif-header {
   display: flex;
   align-items: center;
@@ -181,17 +165,33 @@ ion-item.card.notif-card.has-rows::part(native) { padding-bottom: 16px; }
   width: 100%;
   padding: 10px 0;
   background: transparent;
-  border: 0;
   color: var(--text);
   font-weight: 800;
   font-size: var(--fs);
   text-align: left;
 }
-.notif-header .plus {
+.notif-header .alarm {
   color: var(--accent);
-  font-weight: 900;
   font-size: calc(var(--fs) + 2px);
   line-height: 1;
+}
+.notif-header .spacer { flex: 1 1 auto; }
+
+/* Plus rechts – gleiche Maße wie Stepper-Buttons */
+.notif-plus {
+  --padding-start: 10px;
+  --padding-end: 10px;
+  height: 44px;
+  min-width: 44px;
+  font-size: var(--fs);
+  font-weight: 900;
+  color: var(--text);
+  --background: transparent;
+  --background-hover: transparent;
+  --background-activated: transparent;
+  --background-focused: transparent;
+  --box-shadow: none;
+  --opacity: 1;
 }
 
 /* Jede Notification-Zeile – eckig, volle Breite */
@@ -241,23 +241,23 @@ ion-item.card.notif-card.has-rows::part(native) { padding-bottom: 16px; }
 /* ===================== Modal theme (DARK, fully opaque) ===================== */
 
 ion-modal.modal-content {
-  --backdrop-opacity: 1;                 /* voll opak */
-  --backdrop-color: #0f1115;             /* identisch zum App-Hintergrund */
-  --backdrop-background: #0f1115;        /* Fallback */
+  --backdrop-opacity: 1;
+  --backdrop-color: #0f1115;
+  --backdrop-background: #0f1115;
 }
 ion-modal.modal-content::part(backdrop) {
   background: #0f1115 !important;
   opacity: 1 !important;
 }
 ion-modal.modal-content::part(content) {
-  background: #0f1115 !important;        /* kein Weiß mehr */
+  background: #0f1115 !important;
 }
 
-/* Eigene Canvas-Schicht (Fallback, falls ::part nicht greift) */
+/* Eigene Canvas-Schicht */
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: #0f1115;                   /* identisch mit App-BG */
+  background: #0f1115;
   display: grid;
   place-items: center;
   padding: 16px;
@@ -283,18 +283,16 @@ ion-modal.modal-content::part(content) {
   padding: 8px 0;
 }
 
-/* IonDatetime – weiße Zahlen, gelber aktiver Wert, dunkler Hintergrund */
+/* IonDatetime – Wheel fix + Farben */
 .time-picker {
   --background: #0b0d12;
   --color: #ffffff;
-  --ion-color-warning: #ffc400; /* nutzt color="warning" */
+  --ion-color-warning: #ffc400;
   --wheel-highlight-background: rgba(255,255,255,.10);
   --wheel-highlight-border-radius: 12px;
   --wheel-fade-background-rgb: 15,17,21;
-
-  inline-size: 100%; /* volle Breite */
+  inline-size: 100%;
 }
-/* Wheel bündig & zentriert (kein rechter Rand) */
 .time-picker::part(wheels),
 .time-picker::part(wheel),
 .time-picker::part(column),
@@ -305,10 +303,8 @@ ion-modal.modal-content::part(content) {
   margin-left: 0 !important;
   margin-right: 0 !important;
 }
-
 .time-picker::part(wheel-item) { color: rgba(255,255,255,.85); }
 .time-picker::part(wheel-item-active) { color: #ffc400; font-weight: 800; }
-/* Fallbacks für verschiedene Ionic-Versionen */
 .time-picker .picker-item.picker-item-active,
 .time-picker .wheel-item.selected,
 .time-picker .wheel-item.picker-item-active,
@@ -336,7 +332,7 @@ ion-modal.modal-content::part(content) {
 }
 .day-pill.active { border-color: #ffc400; color: #ffc400; }
 
-/* Modal-Actions – gelber SAVE wie auf der Seite */
+/* Modal-Actions */
 .modal-actions {
   display: flex;
   justify-content: flex-end;
@@ -357,4 +353,25 @@ ion-modal.modal-content::part(content) {
   font-weight: 800;
   letter-spacing: .2px;
   font-size: 18px;
+}
+
+/* ===== Nur die erste/letzte Karte abrunden (4px), ohne Wheel zu stören ===== */
+ion-list > ion-item.card:first-of-type {
+  border-radius: 4px 4px 0 0;
+}
+ion-list > ion-item.card:first-of-type::part(native) {
+  border-radius: 4px 4px 0 0;
+}
+
+ion-list > ion-item.card:last-of-type {
+  border-radius: 0 0 4px 4px;
+}
+ion-list > ion-item.card:last-of-type::part(native) {
+  border-radius: 0 0 4px 4px;
+}
+
+/* Inhalte sollen nicht über die runden Ecken hinausragen */
+ion-list > ion-item.card:first-of-type::part(native),
+ion-list > ion-item.card:last-of-type::part(native) {
+  overflow: hidden;
 }

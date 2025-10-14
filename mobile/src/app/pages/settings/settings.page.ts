@@ -1,15 +1,16 @@
-// mobile/src/app/pages/settings/settings.page.ts
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
 
+// Deutsch: Standalone-Bausteine EXPLIZIT importieren, inkl. IonIcon
 import {
   IonHeader, IonToolbar, IonTitle, IonButtons, IonBackButton,
   IonContent, IonList, IonItem, IonButton, IonAlert, IonIcon
 } from '@ionic/angular/standalone';
 
+import { RouterModule } from '@angular/router';
 import { HabitService } from '../../habit.service';
 
+// Deutsch: Ionicons registrieren (Reset + Alarm)
 import { addIcons } from 'ionicons';
 import { refreshOutline, refreshCircleOutline, alarmOutline } from 'ionicons/icons';
 
@@ -19,15 +20,17 @@ import { refreshOutline, refreshCircleOutline, alarmOutline } from 'ionicons/ico
   templateUrl: './settings.page.html',
   styleUrls: ['./settings.page.scss'],
   imports: [
-    CommonModule, RouterModule, // <<— WICHTIG für [routerLink]
+    CommonModule,
+    RouterModule,
     IonHeader, IonToolbar, IonTitle, IonButtons, IonBackButton,
-    IonContent, IonList, IonItem, IonButton, IonAlert, IonIcon,
+    IonContent, IonList, IonItem, IonButton, IonAlert, IonIcon
   ],
 })
 export class SettingsPage {
   private readonly habitSvc = inject(HabitService);
 
   constructor() {
+    // Deutsch: Icons einmalig für diese Page registrieren
     addIcons({
       'refresh-outline': refreshOutline,
       'refresh-circle-outline': refreshCircleOutline,
@@ -38,6 +41,7 @@ export class SettingsPage {
   readonly habits$ = (this.habitSvc as any).habits$;
   trackById = (_: number, h: any) => h?.id;
 
+  // --- Streak-Werte aus dem Service ---
   currentStreak(id: string): number {
     const svc: any = this.habitSvc;
     return (svc.currentStreak?.(id) ?? svc.getCurrentStreak?.(id) ?? 0) as number;
@@ -47,6 +51,7 @@ export class SettingsPage {
     return (svc.longestStreak?.(id) ?? svc.getLongestStreak?.(id) ?? 0) as number;
   }
 
+  // --- Farbskala ---
   private colorForStreakDays(days: number): string {
     if (days >= 365) return '#ef4444';
     if (days >= 186) return '#d946ef';
@@ -66,7 +71,7 @@ export class SettingsPage {
     return this.colorForStreakDays(d);
   }
 
-  // Delete-Alert
+  // ===== Delete-Dialog =====
   alertOpen = false;
   alertButtons: any[] = [];
   private pendingDeleteId: string | null = null;
@@ -80,6 +85,7 @@ export class SettingsPage {
     ];
     this.alertOpen = true;
   }
+
   private doDelete() {
     if (!this.pendingDeleteId) return;
     const svc: any = this.habitSvc;
@@ -91,30 +97,37 @@ export class SettingsPage {
     this.alertOpen = false;
   }
 
-  // Reset-Flow (mit Mehrfachauswahl)
+  // ===== Reset-Flow =====
   resetChoiceOpen = false;
   resetConfirmOpen = false;
   resetChoiceInputs: any[] = [];
   resetChoiceButtons: any[] = [];
   resetConfirmButtons: any[] = [];
+
+  resetChoice: 'current' | 'longest' | null = null;
   selectedResetHabitId: string | null = null;
   selectedResetHabitName: string | null = null;
-  resetChoice: Array<'current' | 'longest'> = [];
 
   onResetStreakClick(habit: any, ev?: Event) {
     ev?.stopPropagation();
     this.selectedResetHabitId = habit?.id ?? null;
     this.selectedResetHabitName = habit?.name ?? null;
+    this.openResetChoiceAlert();
+  }
 
+  private openResetChoiceAlert() {
     this.resetChoiceInputs = [
-      { type: 'checkbox', label: 'Current streak', value: 'current', checked: true },
-      { type: 'checkbox', label: 'Longest streak', value: 'longest' },
+      { type: 'radio', label: 'Current streak', value: 'current', checked: true },
+      { type: 'radio', label: 'Longest streak', value: 'longest' },
     ];
     this.resetChoiceButtons = [
       { text: 'Cancel', role: 'cancel' },
       {
-        text: 'Continue', role: 'confirm',
-        handler: (values: Array<'current' | 'longest'>) => { this.resetChoice = values ?? []; },
+        text: 'Continue',
+        role: 'confirm',
+        handler: (value: 'current' | 'longest') => {
+          this.resetChoice = value ?? 'current';
+        },
       },
     ];
     this.resetChoiceOpen = true;
@@ -122,46 +135,57 @@ export class SettingsPage {
 
   proceedAfterChoiceIfAnyPublicAdapter() {
     this.resetChoiceOpen = false;
-    if (this.resetChoice.length > 0) {
-      this.resetConfirmButtons = [
-        { text: 'Cancel', role: 'cancel' },
-        {
-          text: 'Confirm', role: 'confirm',
-          handler: async () => { await this.applyReset(); },
-        },
-      ];
-      this.resetConfirmOpen = true;
-    }
+    if (this.resetChoice) this.openResetConfirmAlert();
   }
 
   get resetConfirmMessage(): string {
+    const which = this.resetChoice === 'current' ? 'current' : 'longest';
     const name = this.selectedResetHabitName || '';
-    const parts = [];
-    if (this.resetChoice.includes('current')) parts.push('current streak');
-    if (this.resetChoice.includes('longest')) parts.push('longest streak');
-    const what = parts.join(' and ');
-    return `This will permanently reset the ${what} for “${name}”. This action cannot be undone.`;
-    // Deutsch im Code-Kommentar: Der Text ist absichtlich Englisch (App-Sprache).
+    return `This will permanently reset the ${which} streak for “${name}”. This action cannot be undone.`;
+  }
+
+  private openResetConfirmAlert() {
+    this.resetConfirmButtons = [
+      { text: 'Cancel', role: 'cancel' },
+      { text: 'Confirm', role: 'confirm', handler: async () => { await this.applyReset(); } },
+    ];
+    this.resetConfirmOpen = true;
   }
 
   private async applyReset() {
     const id = this.selectedResetHabitId;
-    if (!id || this.resetChoice.length === 0) {
+    const choice = this.resetChoice;
+    if (!id || !choice) {
       this.resetConfirmOpen = false;
       return;
     }
     const svc: any = this.habitSvc;
+
     try {
-      const upd = await (svc.getHabitById?.(id) ?? svc.findHabitById?.(id));
-      if (!upd) return;
-
-      if (this.resetChoice.includes('current')) upd.currentStreak = 0;
-      if (this.resetChoice.includes('longest')) upd.longestStreak = 0;
-
-      await (svc.updateHabit?.(upd) ?? svc.saveHabit?.(upd) ?? svc.upsertHabit?.(upd));
+      if (choice === 'current') {
+        if (svc.resetCurrentStreak) {
+          await svc.resetCurrentStreak(id);
+        } else {
+          const upd = await (svc.getHabitById?.(id) ?? svc.findHabitById?.(id));
+          if (upd) {
+            upd.currentStreak = 0;
+            await (svc.updateHabit?.(upd) ?? svc.saveHabit?.(upd) ?? svc.upsertHabit?.(upd));
+          }
+        }
+      } else {
+        if (svc.resetLongestStreak) {
+          await svc.resetLongestStreak(id);
+        } else {
+          const upd = await (svc.getHabitById?.(id) ?? svc.findHabitById?.(id));
+          if (upd) {
+            upd.longestStreak = 0;
+            await (svc.updateHabit?.(upd) ?? svc.saveHabit?.(upd) ?? svc.upsertHabit?.(upd));
+          }
+        }
+      }
     } finally {
       this.resetConfirmOpen = false;
-      this.resetChoice = [];
+      this.resetChoice = null;
       this.selectedResetHabitId = null;
       this.selectedResetHabitName = null;
     }

@@ -1,15 +1,16 @@
 :host {
+  /* Farben wie auf der Add-Habit-Seite */
   --page-bg: #0f1115;
   --card-bg: #171a20;
   --text: #ffffff;
   --muted: rgba(255, 255, 255, 0.65);
   --accent: #ffc400;
 
-  --font-base: 18px;   /* vorher 20px */
+  --font-base: 18px;
   --card-gap: 12px;
 }
 
-/* Header dunkel */
+/* Header */
 ion-header,
 ion-toolbar {
   --background: var(--page-bg);
@@ -19,7 +20,7 @@ ion-toolbar {
   box-shadow: none;
 }
 ion-title {
-  font-size: 20px; /* vorher 22px */
+  font-size: 20px;
   font-weight: 700;
 }
 
@@ -39,25 +40,25 @@ ion-list::part(container) {
   margin: 12px 0 24px;
   display: flex;
   flex-direction: column;
-  gap: 2px; /* 4px gewünscht? sag Bescheid – aktuell 2px wie Add-Habit */
+  gap: 2px; /* 2px Abstand zwischen Kacheln */
 }
 
-/* Karten (4px Ecken & kein zusätzlicher Rand) */
+/* Karte (4px Rundung an allen Ecken) */
 ion-item.card {
   --background: var(--card-bg);
   --color: var(--text);
   --padding-start: 14px;
   --inner-padding-end: 14px;
   --min-height: 84px;
-  border-radius: 4px;
+  border-radius: 4px;              /* <— NEU */
   font-size: var(--font-base);
 }
 ion-item.card::part(native) {
   background: var(--card-bg);
-  border-radius: 4px;
+  border-radius: 4px;              /* <— NEU */
 }
 
-/* Layout: links Inhalt, rechts Actions */
+/* Layout in der Kachel */
 .row {
   display: grid;
   grid-template-columns: 1fr max-content; /* Inhalt | Actions */
@@ -65,6 +66,8 @@ ion-item.card::part(native) {
   align-items: center;
   gap: var(--card-gap);
   width: 100%;
+  padding-top: 5px;     /* etwas mehr Luft oben */
+  padding-bottom: 5px;  /* und unten */
 }
 
 .name {
@@ -88,12 +91,12 @@ ion-item.card::part(native) {
   .line { white-space: nowrap; }
   .num {
     font-weight: 900;
-    color: var(--text); /* genaue Farbe via TS */
+    color: var(--text);
     margin-left: 6px;
   }
 }
 
-/* RECHTS: Actions */
+/* Actions rechts */
 .actions {
   grid-column: 2;
   grid-row: 1 / span 2;
@@ -104,7 +107,7 @@ ion-item.card::part(native) {
   gap: 6px;
 }
 
-/* Kompakte Buttons */
+/* Buttons kompakt & transparent */
 .actions ion-button {
   --padding-start: 8px;
   --padding-end: 8px;
@@ -117,25 +120,21 @@ ion-item.card::part(native) {
   --background-focused: transparent;
 }
 
-/* Farben/Größen der Icons vereinheitlichen */
-.actions ion-button ion-icon { font-size: 22px; }
-
-/* Alarm-Icon = muted weiß */
-.actions ion-button.notif {
-  --color: var(--muted);
-  color: var(--muted);
-}
-
-/* Reset-Icon = muted weiß */
+/* Muted white für Alarm + Reset; einheitliche Icon-Größe */
+.actions ion-button.alarm,
 .actions ion-button.reset {
   --color: var(--muted);
   color: var(--muted);
 }
+.actions ion-button.alarm ion-icon,
+.actions ion-button.reset ion-icon {
+  font-size: 22px; /* feste Größe */
+}
 
-/* Delete (✕) rot */
+/* Delete rot */
 .actions ion-button.delete {
   --color: #ff6b6b;
   color: #ff6b6b;
-  font-size: 18px; /* für das ✕ */
+  font-size: 18px; /* ✕ */
 }
 .actions ion-button.delete::part(native) { transition: none; }
