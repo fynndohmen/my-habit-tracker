@@ -1,24 +1,34 @@
 // mobile/src/app/habit.service.ts
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
+import type { HabitNotification } from './services/notification.service'; // nur Typ importieren
+
+export type Period = 'day' | 'week' | 'month';
 
 export interface Habit {
   id: string;
   name: string;
-  /** Tagesziel / Wiederholungen pro Tag */
+  /** Ziel / Wiederholungen pro Zeitraum */
   target: number;
 
-  /** Zähler für HEUTE (lokales Datum) */
+  /** Zeitraum (neu: 'day' | 'week' | 'month') */
+  period: Period;
+
+  /** Zähler für HEUTE (lokales Datum) – für 'day' genutzt; für andere Perioden kannst du bei Bedarf erweitern */
   todayCount: number;
   /** Letztes Datum, an dem der todayCount gezählt wurde (YYYY-MM-DD, lokal) */
   lastCountDate?: string;
 
   /** Datum (YYYY-MM-DD, lokal), an dem zuletzt ein Tag vollständig erfüllt wurde */
   lastFullCompleteDate?: string;
+
   /** Aktuelle Streak (aufeinanderfolgende Tage mit Vollerfüllung) */
   currentStreak: number;
   /** Längste Streak historisch */
   longestStreak: number;
+
+  /** Neu: gespeicherte Reminder für dieses Habit */
+  notifications: HabitNotification[];
 
   createdAt: string; // ISO
   updatedAt: string; // ISO
@@ -57,25 +67,33 @@ export class HabitService {
 
   // ======= Öffentliche API, die von deinen Seiten genutzt wird =======
 
-  addHabit(name: string, repeats: number): void {
+  /**
+   * Deutsch: Neues Habit anlegen.
+   * Rückgabe ist die neue ID (damit Add-Habit danach Notifications planen kann).
+   */
+  addHabit(name: string, repeats: number, period: Period = 'day', notifications: HabitNotification[] = []): string {
     const target = Math.max(1, Math.floor(repeats || 1));
     const today = dateKeyLocal();
+    const id = uid();
 
     const newHabit: Habit = {
-      id: uid(),
+      id,
       name: name.trim(),
       target,
+      period,
       todayCount: 0,
       lastCountDate: today,
       lastFullCompleteDate: undefined,
       currentStreak: 0,
       longestStreak: 0,
+      notifications: notifications ?? [],
       createdAt: nowIso(),
       updatedAt: nowIso(),
     };
 
     const next = [...this.normalizeAll(this._state$.value), newHabit];
     this.commit(next);
+    return id;
   }
 
   /** Erhöht die heutige Zählung um 1 (bis max. target). Erhöht Streak **einmal** wenn Ziel erreicht wurde. */
@@ -116,6 +134,44 @@ export class HabitService {
     this.commit(next);
   }
 
+  /** Deutsch: „Gestern erledigt“ explizit markieren (für deinen Dialog). */
+  markYesterdayComplete(id: string): void {
+    const today = dateKeyLocal();
+    const yesterday = yesterdayKeyLocal();
+
+    const next = this._state$.value.map((h) => {
+      if (h.id !== id) return this.normalize(h);
+
+      const habit = this.normalize({ ...h });
+
+      // Nur Streak-Logik für „gestern“ setzen
+      if (habit.lastFullCompleteDate === today) {
+        // already counted today – nichts tun
+        return habit;
+      }
+
+      if (habit.lastFullCompleteDate === yesterday) {
+        // schon gestern gezählt
+        return habit;
+      }
+
+      // „Gestern“ als erfüllt markieren + Streak fortsetzen/setzen
+      if (habit.currentStreak > 0 && habit.lastFullCompleteDate) {
+        // Wenn vorgestern erfüllt war, reiht sich gestern korrekt ein
+        habit.currentStreak += 1;
+      } else {
+        habit.currentStreak = Math.max(1, habit.currentStreak);
+      }
+      habit.longestStreak = Math.max(habit.longestStreak, habit.currentStreak);
+      habit.lastFullCompleteDate = today; // wir „ziehen“ die Serie bis heute – optional anders gestalten
+      habit.updatedAt = nowIso();
+
+      return habit;
+    });
+
+    this.commit(next);
+  }
+
   /** OPTIONAL: Zählt den heutigen Fortschritt runter (min 0). */
   undo(id: string): void {
     const today = dateKeyLocal();
@@ -125,12 +181,8 @@ export class HabitService {
       const habit = this.normalize({ ...h });
 
       if (habit.todayCount > 0) {
-        // Wenn wir gerade vom "voll erfüllt" wieder heruntergehen, entfernen wir das "heute erfüllt"-Flag,
-        // passen aber die Streak nicht aggressiv rückwärts an (kein Verlaufs-Tracking).
         if (habit.todayCount === habit.target && habit.lastFullCompleteDate === today) {
           habit.lastFullCompleteDate = undefined;
-          // Option: currentStreak unangetastet lassen, um Überraschungen zu vermeiden.
-          // (Ein „Undo“ für Streaks kann man später explizit designen.)
         }
         habit.todayCount -= 1;
         habit.updatedAt = nowIso();
@@ -146,7 +198,7 @@ export class HabitService {
     const next = this._state$.value.filter((h) => h.id !== id);
     this.commit(next);
   }
-  // Alias-Namen für Robustheit (du hast an mehreren Stellen unterschiedliche Namen verwendet)
+  // Alias-Namen
   delete(id: string) { this.deleteHabit(id); }
   remove(id: string) { this.deleteHabit(id); }
   removeHabit(id: string) { this.deleteHabit(id); }
@@ -161,19 +213,48 @@ export class HabitService {
     return { count, target: h.target, percent };
   }
 
-  /** Aktuelle Streak (Zahl) – auch unter alternativen Namen abrufbar */
   currentStreak(id: string): number {
     const h = this._state$.value.find((x) => x.id === id);
     return h ? this.normalize(h).currentStreak : 0;
   }
   getCurrentStreak(id: string): number { return this.currentStreak(id); }
 
-  /** Längste Streak (Zahl) – auch unter alternativem Namen abrufbar */
   longestStreak(id: string): number {
     const h = this._state$.value.find((x) => x.id === id);
     return h ? this.normalize(h).longestStreak : 0;
   }
   getLongestStreak(id: string): number { return this.longestStreak(id); }
+
+  /** === Neu: Notifications lesen/schreiben === */
+
+  /** Deutsch: synchrones Lookup (reicht für UI) */
+  getHabitByIdSync(id: string): Habit | undefined {
+    return this._state$.value.find(h => h.id === id);
+  }
+
+  /** Deutsch: async Variante (Kompatibilität) */
+  async getHabitById(id: string): Promise<Habit | undefined> {
+    return this.getHabitByIdSync(id);
+  }
+
+  /** Deutsch: Nur Notifications eines Habits aktualisieren (und speichern) */
+  updateHabitNotifications(id: string, notifications: HabitNotification[]): void {
+    const next = this._state$.value.map(h => {
+      if (h.id !== id) return h;
+      return {
+        ...h,
+        notifications: notifications ?? [],
+        updatedAt: nowIso(),
+      };
+    });
+    this.commit(next);
+  }
+
+  /** Deutsch: Ganzes Habit aktualisieren (falls du an anderer Stelle mehr änderst) */
+  updateHabit(updated: Habit): void {
+    const next = this._state$.value.map(h => h.id === updated.id ? { ...this.normalize(updated), updatedAt: nowIso() } : h);
+    this.commit(next);
+  }
 
   // ======= Interne Helfer =======
 
@@ -182,12 +263,19 @@ export class HabitService {
     const today = dateKeyLocal();
 
     if (h.lastCountDate && h.lastCountDate === today) {
-      return h; // nichts zu tun
+      // stellt sicher, dass period/notifications immer existieren
+      return {
+        ...h,
+        period: (h as any).period ?? 'day',
+        notifications: Array.isArray((h as any).notifications) ? (h as any).notifications : [],
+      };
     }
 
     // Datum hat gewechselt oder war noch nicht gesetzt -> Tageszähler zurücksetzen
     const next: Habit = {
       ...h,
+      period: (h as any).period ?? 'day',
+      notifications: Array.isArray((h as any).notifications) ? (h as any).notifications : [],
       todayCount: 0,
       lastCountDate: today,
       updatedAt: nowIso(),
@@ -217,19 +305,20 @@ export class HabitService {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return [];
-      const parsed = JSON.parse(raw) as Habit[];
-      // einfache Migration/Defaults
+      const parsed = JSON.parse(raw) as any[];
       return (parsed ?? []).map((h) => ({
         id: h.id,
         name: h.name,
-        target: Math.max(1, (h as any).target ?? (h as any).repeats ?? 1),
-        todayCount: Math.max(0, (h as any).todayCount ?? 0),
-        lastCountDate: (h as any).lastCountDate,
-        lastFullCompleteDate: (h as any).lastFullCompleteDate,
-        currentStreak: Math.max(0, (h as any).currentStreak ?? 0),
-        longestStreak: Math.max(0, (h as any).longestStreak ?? 0),
-        createdAt: (h as any).createdAt ?? nowIso(),
-        updatedAt: (h as any).updatedAt ?? nowIso(),
+        target: Math.max(1, h?.target ?? h?.repeats ?? 1),
+        period: (h?.period ?? 'day') as Period,
+        todayCount: Math.max(0, h?.todayCount ?? 0),
+        lastCountDate: h?.lastCountDate,
+        lastFullCompleteDate: h?.lastFullCompleteDate,
+        currentStreak: Math.max(0, h?.currentStreak ?? 0),
+        longestStreak: Math.max(0, h?.longestStreak ?? 0),
+        notifications: Array.isArray(h?.notifications) ? h.notifications : [],
+        createdAt: h?.createdAt ?? nowIso(),
+        updatedAt: h?.updatedAt ?? nowIso(),
       }));
     } catch {
       return [];

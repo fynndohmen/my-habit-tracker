@@ -1,0 +1,77 @@
+<!-- mobile/src/app/pages/edit-notifications/edit-notifications.page.html -->
+<ion-header translucent="true">
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button defaultHref="/settings" text="" mode="md"></ion-back-button>
+    </ion-buttons>
+    <ion-title>Edit notifications</ion-title>
+
+    <ion-buttons slot="end">
+      <!-- Deutsch: öffnet das Wheel-Modal -->
+      <ion-button (click)="openNotifModal()" aria-label="Add">
+        <ion-icon name="add-outline" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content fullscreen>
+  <ion-list>
+    <!-- Deutsch: Kachel NUR anzeigen, wenn es Einträge gibt -->
+    <ion-item
+      *ngIf="notifications.length > 0"
+      lines="none"
+      class="card notif-card has-rows">
+      <div class="notif-wrap">
+        <div
+          class="notif-row"
+          *ngFor="let n of notifications; index as i; trackBy: trackByIndex">
+          <div class="time">{{ formatTime(n.hour, n.minute) }}</div>
+          <div class="days">{{ formatDays(n.days) }}</div>
+          <div class="spacer"></div>
+          <ion-button class="remove" fill="clear" (click)="removeNotif(i)" aria-label="Remove">✕</ion-button>
+        </div>
+      </div>
+    </ion-item>
+  </ion-list>
+
+  <!-- Modal: identischer Stil wie auf Add-Habit -->
+  <ion-modal
+    [isOpen]="notifOpen"
+    (didDismiss)="notifOpen=false"
+    class="modal-content">
+    <ng-template>
+      <div class="modal-backdrop">
+        <div class="modal-panel">
+          <div class="modal-title">Add reminder</div>
+
+          <div class="time-card">
+            <ion-datetime
+              class="time-picker"
+              presentation="time"
+              [preferWheel]="true"
+              [value]="notifTimeIso"
+              color="warning"
+              (ionChange)="onTimePicked($event)">
+            </ion-datetime>
+          </div>
+
+          <div class="weekday-row">
+            <button
+              class="day-pill"
+              *ngFor="let d of WEEKDAYS; let i = index"
+              [class.active]="tempDays.includes(i)"
+              (click)="toggleDay(i)">
+              {{ d }}
+            </button>
+          </div>
+
+          <div class="modal-actions">
+            <ion-button class="cancel" fill="clear" (click)="closeNotif()">Cancel</ion-button>
+            <ion-button class="confirm" (click)="confirmNotif()">Save</ion-button>
+          </div>
+        </div>
+      </div>
+    </ng-template>
+  </ion-modal>
+</ion-content>

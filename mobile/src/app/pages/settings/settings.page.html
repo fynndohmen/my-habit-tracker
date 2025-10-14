@@ -14,7 +14,7 @@
       class="card"
       *ngFor="let h of (habits$ | async); trackBy: trackById"
     >
-      <!-- Grid: Name oben, darunter die Streaks; Delete rechts, über beide Zeilen -->
+      <!-- links Inhalt, rechts Actions -->
       <div class="row">
         <div class="name">{{ h.name }}</div>
 
@@ -33,22 +33,68 @@
           </div>
         </div>
 
-        <ion-button
-          class="delete"
-          fill="clear"
-          (click)="confirmDelete(h.id, $event)"
-          aria-label="Delete"
-        >✕</ion-button>
+        <!-- RECHTS: Aktionen -->
+        <div class="actions">
+          <!-- Notifications bearbeiten -->
+          <ion-button
+            class="notif"
+            fill="clear"
+            size="small"
+            [routerLink]="['/edit-notifications', h.id]"
+            aria-label="Edit notifications"
+          >
+            <ion-icon name="alarm-outline" slot="icon-only"></ion-icon>
+          </ion-button>
+
+          <!-- Reset (kreisförmiger Pfeil) -->
+          <ion-button
+            class="reset"
+            fill="clear"
+            size="small"
+            aria-label="Reset streak"
+            (click)="onResetStreakClick(h, $event)"
+          >
+            <ion-icon name="refresh-outline" slot="icon-only"></ion-icon>
+          </ion-button>
+
+          <!-- Delete (X) -->
+          <ion-button
+            class="delete"
+            fill="clear"
+            size="small"
+            aria-label="Delete"
+            (click)="confirmDelete(h.id, $event)"
+          >✕</ion-button>
+        </div>
       </div>
     </ion-item>
   </ion-list>
 
-  <!-- Deklaratives Alert; Öffnen/Buttons kommen aus der TS-Klasse -->
+  <!-- Delete-Alert -->
   <ion-alert
     [isOpen]="alertOpen"
     header="Delete permanently?"
     message="This habit will be removed."
     [buttons]="alertButtons"
     (didDismiss)="alertOpen = false">
+  </ion-alert>
+
+  <!-- Reset: Auswahl -->
+  <ion-alert
+    [isOpen]="resetChoiceOpen"
+    header="Reset streak"
+    message="Which streak data do you want to reset?"
+    [inputs]="resetChoiceInputs"
+    [buttons]="resetChoiceButtons"
+    (didDismiss)="proceedAfterChoiceIfAnyPublicAdapter()">
+  </ion-alert>
+
+  <!-- Reset: Bestätigung -->
+  <ion-alert
+    [isOpen]="resetConfirmOpen"
+    header="Are you sure?"
+    [message]="resetConfirmMessage"
+    [buttons]="resetConfirmButtons"
+    (didDismiss)="resetConfirmOpen = false">
   </ion-alert>
 </ion-content>

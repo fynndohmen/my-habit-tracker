@@ -1,0 +1,162 @@
+/* mobile/src/app/pages/edit-notifications/edit-notifications.page.scss */
+:host {
+  --page-bg: #0f1115;
+  --card-bg: #171a20;
+  --text: #ffffff;
+  --muted: rgba(255,255,255,.65);
+  --accent: #ffc400;
+  --fs: 20px;
+}
+
+/* Header */
+ion-header, ion-toolbar {
+  --background: var(--page-bg);
+  --color: var(--text);
+  --border-width: 0;
+  --border-color: transparent;
+  box-shadow: none;
+}
+ion-title { font-size: var(--fs); font-weight: 700; }
+
+/* Content */
+ion-content { --background: var(--page-bg); }
+ion-content::part(background), ion-content::part(scroll) { background: var(--page-bg) !important; }
+ion-content::part(fixed) { background: transparent !important; }
+
+/* Liste (kein zusätzlicher Außenabstand, Kartenabstand wie Add-Habit) */
+ion-list,
+ion-list::part(container) {
+  background: transparent !important;
+  padding: 0 16px;
+  margin: 12px 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--fs);
+  color: var(--text);
+}
+
+/* Außenkachel */
+ion-item.card {
+  --background: var(--card-bg);
+  --color: var(--text);
+  --padding-start: 14px;
+  --inner-padding-end: 14px;
+  --min-height: 84px;
+  border-radius: 4px; /* 4px wie gewünscht */
+}
+ion-item.card::part(native) { background: var(--card-bg); border-radius: 4px; }
+
+/* Nur wenn Zeilen existieren → etwas extra Platz unten */
+ion-item.card.notif-card::part(native) { padding-bottom: 0; }
+ion-item.card.notif-card.has-rows::part(native) { padding-bottom: 16px; }
+
+/* Wrap der inneren Liste */
+.notif-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 0 0;
+}
+
+/* Einzelne Notification-Zeilen */
+.notif-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 4px; /* 4px wie gewünscht */
+}
+
+.notif-row .time,
+.notif-row .days { font-size: calc(var(--fs) - 4px); }
+.notif-row .time { font-weight: 900; white-space: nowrap; }
+.notif-row .days { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.notif-row .spacer { flex: 1 1 auto; }
+.notif-row .remove { --background: transparent; --color: #ff6b6b; }
+
+/* ===== Modal (identisch zur „perfekt“ genannten Variante) ===== */
+
+/* Backdrop voll opak */
+ion-modal.modal-content {
+  --backdrop-opacity: 1;
+  --backdrop-color: #0f1115;
+  --backdrop-background: #0f1115;
+}
+ion-modal.modal-content::part(backdrop) { background: #0f1115 !important; opacity: 1 !important; }
+ion-modal.modal-content::part(content) { background: #0f1115 !important; }
+
+/* Canvas-Schicht */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: #0f1115;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+/* Panel */
+.modal-panel {
+  width: min(560px, 92vw);
+  background: #171a20;
+  color: #fff;
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0,0,0,.55);
+  padding: 16px;
+}
+.modal-title { font-weight: 800; font-size: 22px; margin-bottom: 12px; }
+
+/* Time-Karte */
+.time-card {
+  background: #0b0d12;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 12px;
+  overflow: hidden;
+  padding: 8px 0;
+}
+
+/* IonDatetime (Wheel) */
+.time-picker {
+  --background: #0b0d12;
+  --color: #ffffff;
+  --ion-color-warning: #ffc400;
+  --wheel-highlight-background: rgba(255,255,255,.10);
+  --wheel-highlight-border-radius: 12px;
+  --wheel-fade-background-rgb: 15,17,21;
+  inline-size: 100%;
+}
+/* bündig/zentriert */
+.time-picker::part(wheels),
+.time-picker::part(wheel),
+.time-picker::part(column),
+.time-picker::part(container),
+.time-picker::part(wheel-rows) {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+.time-picker::part(wheel-item) { color: rgba(255,255,255,.85); }
+.time-picker::part(wheel-item-active) { color: #ffc400; font-weight: 800; }
+.time-picker .picker-item.picker-item-active,
+.time-picker .wheel-item.selected,
+.time-picker .wheel-item.picker-item-active,
+.time-picker .picker-opt.picker-opts-selected {
+  color: #ffc400 !important; font-weight: 800;
+}
+
+/* Wochentage */
+.weekday-row { display: flex; gap: 8px; margin: 14px 0 8px; flex-wrap: wrap; }
+.day-pill { background: #20232a; border: 1px solid #2f333b; color: #ffffff; border-radius: 999px; padding: 8px 12px; min-width: 44px; text-align: center; font-weight: 800; }
+.day-pill.active { border-color: #ffc400; color: #ffc400; }
+
+/* Actions */
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+.modal-actions .cancel { --color: #ffffff !important; color: #ffffff !important; font-weight: 800; }
+.modal-actions .confirm { --background: #ffc400; --color: #1b1b1b; --border-radius: 14px; height: 44px; padding: 0 18px; font-weight: 800; letter-spacing: .2px; font-size: 18px; }

@@ -1,15 +1,11 @@
 :host {
-  /* Farben wie auf der Add-Habit-Seite */
   --page-bg: #0f1115;
   --card-bg: #171a20;
   --text: #ffffff;
   --muted: rgba(255, 255, 255, 0.65);
   --accent: #ffc400;
 
-  /* Typo-Grundgröße (vorher 20px) → 18px */
-  --font-base: 18px;
-
-  /* Abstand innerhalb der Karten */
+  --font-base: 18px;   /* vorher 20px */
   --card-gap: 12px;
 }
 
@@ -22,23 +18,18 @@ ion-toolbar {
   --border-color: transparent;
   box-shadow: none;
 }
-/* Titel 2px kleiner (vorher 22px) → 20px */
 ion-title {
-  font-size: 20px;
+  font-size: 20px; /* vorher 22px */
   font-weight: 700;
 }
 
-/* Content sicher dunkel */
+/* Content */
 ion-content {
   --background: var(--page-bg);
 }
 ion-content::part(background),
-ion-content::part(scroll) {
-  background: var(--page-bg) !important;
-}
-ion-content::part(fixed) {
-  background: transparent !important;
-}
+ion-content::part(scroll) { background: var(--page-bg) !important; }
+ion-content::part(fixed) { background: transparent !important; }
 
 /* Liste */
 ion-list,
@@ -48,37 +39,34 @@ ion-list::part(container) {
   margin: 12px 0 24px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 2px; /* 4px gewünscht? sag Bescheid – aktuell 2px wie Add-Habit */
 }
 
-/* Karten-Stil */
+/* Karten (4px Ecken & kein zusätzlicher Rand) */
 ion-item.card {
   --background: var(--card-bg);
   --color: var(--text);
   --padding-start: 14px;
   --inner-padding-end: 14px;
   --min-height: 84px;
-  border-radius: 16px;
-
-  /* Text im Card-Inhalt insgesamt etwas kleiner */
+  border-radius: 4px;
   font-size: var(--font-base);
 }
 ion-item.card::part(native) {
   background: var(--card-bg);
-  border-radius: 16px;
+  border-radius: 4px;
 }
 
-/* Layout: Name oben (Zeile 1), Streaks darunter (Zeile 2), Delete rechts über beide Zeilen */
+/* Layout: links Inhalt, rechts Actions */
 .row {
   display: grid;
-  grid-template-columns: 1fr auto;     /* Inhalt | Delete */
-  grid-template-rows: auto auto;        /* Name | Streaks */
+  grid-template-columns: 1fr max-content; /* Inhalt | Actions */
+  grid-template-rows: auto auto;          /* Name | Streaks */
   align-items: center;
   gap: var(--card-gap);
   width: 100%;
 }
 
-/* Name – oben, volle Breite linke Spalte */
 .name {
   grid-column: 1;
   grid-row: 1;
@@ -90,41 +78,64 @@ ion-item.card::part(native) {
   text-overflow: ellipsis;
 }
 
-/* Streaks – zweite Zeile, linke Spalte */
 .streaks {
   grid-column: 1;
   grid-row: 2;
   color: var(--muted);
   line-height: 1.25;
   text-align: left;
-}
-.streaks .line {
-  white-space: nowrap;
-}
-.streaks .num {
-  font-weight: 900;
-  color: var(--text); /* Basis – exakte Farbe kommt per TS */
-  margin-left: 6px;
+
+  .line { white-space: nowrap; }
+  .num {
+    font-weight: 900;
+    color: var(--text); /* genaue Farbe via TS */
+    margin-left: 6px;
+  }
 }
 
-/* Delete-Button – rechte Spalte, über beide Zeilen */
-ion-button.delete {
+/* RECHTS: Actions */
+.actions {
   grid-column: 2;
   grid-row: 1 / span 2;
   justify-self: end;
 
-  --padding-start: 10px;
-  --padding-end: 10px;
-  min-width: 40px;
-  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Kompakte Buttons */
+.actions ion-button {
+  --padding-start: 8px;
+  --padding-end: 8px;
+  min-width: 36px;
+  height: 36px;
   line-height: 1;
   --background: transparent;
   --background-hover: transparent;
   --background-activated: transparent;
   --background-focused: transparent;
-  color: #ff6b6b;
-
-  /* 2px kleiner (vorher 20px) → 18px */
-  font-size: 18px;
 }
-ion-button.delete::part(native) { transition: none; }
+
+/* Farben/Größen der Icons vereinheitlichen */
+.actions ion-button ion-icon { font-size: 22px; }
+
+/* Alarm-Icon = muted weiß */
+.actions ion-button.notif {
+  --color: var(--muted);
+  color: var(--muted);
+}
+
+/* Reset-Icon = muted weiß */
+.actions ion-button.reset {
+  --color: var(--muted);
+  color: var(--muted);
+}
+
+/* Delete (✕) rot */
+.actions ion-button.delete {
+  --color: #ff6b6b;
+  color: #ff6b6b;
+  font-size: 18px; /* für das ✕ */
+}
+.actions ion-button.delete::part(native) { transition: none; }

@@ -1,7 +1,6 @@
 <ion-header translucent="true">
   <ion-toolbar>
     <ion-buttons slot="start">
-      <!-- zeigt sich auch ohne History dank defaultHref -->
       <ion-back-button defaultHref="/" text="" mode="md"></ion-back-button>
     </ion-buttons>
     <ion-title>New habit</ion-title>
@@ -26,17 +25,54 @@
       </div>
     </ion-item>
 
-    <!-- REPETITIONS -->
+    <!-- PERIOD (Tabs: Day / Week / Month – aktive in Gelb) -->
     <ion-item lines="none" class="card">
       <div class="row head">
-        <div class="label">Repetitions per day</div>
-        <div class="value">{{ repeats }}</div>
+        <div class="label">Period</div>
         <div class="spacer"></div>
-      </div>
 
-      <div class="row stepper-row">
-        <ion-button class="stepper-btn" fill="clear" (click)="dec()" aria-label="Less">–</ion-button>
-        <ion-button class="stepper-btn" fill="clear" (click)="inc()" aria-label="More">+</ion-button>
+        <div class="period-tabs">
+          <button class="tab" [class.active]="period==='day'" (click)="setPeriod('day')">DAY</button>
+          <button class="tab" [class.active]="period==='week'" (click)="setPeriod('week')">WEEK</button>
+          <button class="tab" [class.active]="period==='month'" (click)="setPeriod('month')">MONTH</button>
+        </div>
+      </div>
+    </ion-item>
+
+    <!-- REPETITIONS (Counter zwischen – und +) -->
+    <ion-item lines="none" class="card">
+      <div class="row head">
+        <div class="label">Repetitions per {{ period }}</div>
+        <div class="spacer"></div>
+        <div class="stepper-row">
+          <ion-button class="stepper-btn" fill="clear" (click)="dec()" aria-label="Less">–</ion-button>
+          <div class="value-inline" aria-live="polite">{{ repeats }}</div>
+          <ion-button class="stepper-btn" fill="clear" (click)="inc()" aria-label="More">+</ion-button>
+        </div>
+      </div>
+    </ion-item>
+
+    <!-- NOTIFICATIONS -->
+    <ion-item
+      lines="none"
+      class="card notif-card"
+      [class.has-rows]="(notifications?.length ?? 0) > 0">
+      <div class="notif-wrap">
+        <button class="notif-header" (click)="openNotifModal()">
+          <span class="plus">+</span>
+          <span>Add notification</span>
+        </button>
+
+        <div
+          class="notif-row"
+          *ngFor="let n of notifications; index as i; trackBy: trackByIndex">
+          <div class="time">
+            {{ n.hour | number:'2.0' }}:{{ n.minute | number:'2.0' }}
+          </div>
+          <div class="days">{{ formatDays(n.days) }}</div>
+          <div class="spacer"></div>
+          <ion-button class="remove" fill="clear" (click)="removeNotif(i)" aria-label="Remove">✕</ion-button>
+        </div>
       </div>
     </ion-item>
 
@@ -45,4 +81,40 @@
   <div class="actions">
     <ion-button class="save" (click)="save()" [disabled]="!name.trim()">Save</ion-button>
   </div>
+
+  <!-- Modal: dunkles, undurchsichtiges Wheel (gelber aktiver Wert) -->
+  <ion-modal [isOpen]="notifOpen" (didDismiss)="notifOpen=false" class="modal-content">
+    <ng-template>
+      <div class="modal-backdrop">
+        <div class="modal-panel">
+          <div class="modal-title">Add reminder</div>
+
+          <div class="time-card">
+            <ion-datetime
+              class="time-picker"
+              presentation="time"
+              [preferWheel]="true"
+              [value]="notifTimeIso"
+              (ionChange)="onTimePicked($event)">
+            </ion-datetime>
+          </div>
+
+          <div class="weekday-row">
+            <button
+              class="day-pill"
+              *ngFor="let d of WEEKDAYS; index as i"
+              [class.active]="tempDays.includes(i)"
+              (click)="toggleDay(i)">
+              {{ d }}
+            </button>
+          </div>
+
+          <div class="modal-actions">
+            <ion-button class="cancel" fill="clear" (click)="closeNotif()">Cancel</ion-button>
+            <ion-button class="confirm" (click)="confirmNotif()">Save</ion-button>
+          </div>
+        </div>
+      </div>
+    </ng-template>
+  </ion-modal>
 </ion-content>

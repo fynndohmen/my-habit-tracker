@@ -47,4 +47,14 @@
       </div>
     </ion-item>
   </ion-list>
+
+  <!-- Deutsch: Auswahl-Dialog NACH dem Halten, wenn gestern nicht erledigt war -->
+  <ion-alert
+    [isOpen]="chooseDayOpen"
+    header="You skipped yesterday"
+    message="You didn't finish this yesterday, but you can mark it as done. Choose the day:"
+    [inputs]="chooseDayInputs"
+    [buttons]="chooseDayButtons"
+    (didDismiss)="chooseDayOpen = false">
+  </ion-alert>
 </ion-content>

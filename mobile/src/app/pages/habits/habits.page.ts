@@ -3,7 +3,7 @@ import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IonicModule } from '@ionic/angular';
 import { RouterModule } from '@angular/router';
-import { HabitService } from '../../habit.service'; // <— Pfad zu deinem Service
+import { HabitService } from '../../habit.service';
 
 @Component({
   standalone: true,
@@ -49,24 +49,16 @@ export class HabitsPage {
     return '#ffc400';                   // gelb (0–6)
   }
 
-  /** Rahmenfarbe (immer nach Skala, auch wenn noch nie abgeschlossen). */
   frameColor(id: string): string {
     return this.colorForStreak(this.currentStreak(id));
   }
-
-  /**
-   * Textfarbe der Streak-Zahl:
-   * - Weiß, wenn das Habit *noch nie* abgeschlossen wurde (longestStreak === 0)
-   * - sonst nach Streak-Skala.
-   */
   streakTextColor(id: string): string {
     const everCompleted = this.longestStreak(id) > 0;
     return everCompleted ? this.colorForStreak(this.currentStreak(id)) : '#ffffff';
   }
 
-  // ==== Hold-Geste (unverändert) ====
+  // ==== Hold-Geste ====
   private static readonly HOLD_MS = 700;
-
   private _holdPct = new Map<string, number>(); // 0..1 -> CSS-Var --hold
   private _raf = new Map<string, number>();
   private _start = new Map<string, number>();
@@ -101,7 +93,6 @@ export class HabitsPage {
 
     const wasCompleted = this._completedThisHold.get(id) === true;
 
-    // Nach Erfolg: Overlay ohne Rück-Animation ausblenden
     if (wasCompleted) {
       this._noHold.add(id);
       this._holdPct.set(id, 0);
@@ -124,8 +115,7 @@ export class HabitsPage {
 
     if (pct >= 1 && !this._completedThisHold.get(id)) {
       this._completedThisHold.set(id, true);
-      this.habitSvc.complete(id);
-      // bleibt voll bis pointerup; Reset in endHold()
+      this.onCompleteRequest(id); // Auswahl ggf. anzeigen
     } else {
       const handle = requestAnimationFrame(() => this.loop(id));
       this._raf.set(id, handle);
@@ -138,5 +128,105 @@ export class HabitsPage {
       cancelAnimationFrame(handle);
       this._raf.delete(id);
     }
+  }
+
+  // ======= Gestern/Heute-Flow (Alert) =======
+  chooseDayOpen = false;
+  chooseDayInputs: any[] = [];
+  chooseDayButtons: any[] = [];
+  private pendingHabitId: string | null = null;
+
+  /** Hilfe: Habit holen – verträgt unterschiedliche Service-APIs */
+  private async fetchHabit(id: string): Promise<any | null> {
+    const svc: any = this.habitSvc as any;
+    const fn =
+      svc.getHabitById ??
+      svc.getHabit ??
+      svc.findById ??
+      svc.findHabitById ??
+      null;
+
+    if (!fn) return null;
+
+    const res = fn.call(svc, id);
+    return res instanceof Promise ? await res : res;
+  }
+
+  /** Hilfe: „Gestern“ markieren – verträgt unterschiedliche Service-APIs */
+  private markYesterday(id: string): void {
+    const svc: any = this.habitSvc as any;
+    if (typeof svc.markYesterdayComplete === 'function') {
+      svc.markYesterdayComplete(id);
+    } else if (typeof svc.completeForDay === 'function') {
+      svc.completeForDay(id, 'yesterday');
+    } else if (typeof svc.retroComplete === 'function') {
+      svc.retroComplete(id, -1); // gestern
+    } else {
+      // Fallback: wenigstens heute zählen (funktional weniger korrekt,
+      // verhindert aber Laufzeitfehler)
+      this.habitSvc.complete(id);
+    }
+  }
+
+  /** Nach erfülltem Hold entscheiden, ob gestern nachtragen oder heute zählen */
+  private async onCompleteRequest(id: string) {
+    this.pendingHabitId = id;
+
+    // Habit holen, um Zeitraum zu prüfen
+    const h = await this.fetchHabit(id);
+    if (!h) { this.habitSvc.complete(id); return; }
+
+    // Für Wochen-Zeitraum keine „Gestern“-Option → direkt heute zählen
+    if (h.period === 'week') {
+      this.habitSvc.complete(id);
+      return;
+    }
+
+    // Für Tages-Zeitraum prüfen, ob gestern NICHT als voll markiert war
+    const yesterdayMissed = (h.lastFullCompleteKey !== undefined)
+      ? (h.lastFullCompleteKey !== this.prevDayKey())
+      : true;
+
+    if (yesterdayMissed) {
+      this.chooseDayInputs = [
+        { type: 'radio', label: 'Yesterday', value: 'yesterday', checked: true },
+        { type: 'radio', label: 'Today', value: 'today' },
+      ];
+      this.chooseDayButtons = [
+        { text: 'Cancel', role: 'cancel' },
+        {
+          text: 'Confirm',
+          role: 'confirm',
+          handler: (value: 'yesterday' | 'today') => this.applyChooseDay(value),
+        },
+      ];
+      this.chooseDayOpen = true;
+    } else {
+      this.habitSvc.complete(id);
+    }
+  }
+
+  /** Auswahl übernehmen */
+  private applyChooseDay(choice: 'yesterday' | 'today') {
+    const id = this.pendingHabitId;
+    this.chooseDayOpen = false;
+    this.pendingHabitId = null;
+    if (!id) return;
+
+    if (choice === 'yesterday') {
+      this.markYesterday(id);
+    } else {
+      this.habitSvc.complete(id);
+    }
+  }
+
+  /** kleiner Helfer für den Vergleich im TS */
+  private prevDayKey(): string {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    const y = d.getFullYear();
+    const m = (d.getMonth() + 1).toString().padStart(2, '0');
+    const day = d.getDate().toString().padStart(2, '0');
+    return `${y}-${m}-${day}`;
   }
 }

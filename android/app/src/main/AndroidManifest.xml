@@ -1,6 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- ===== Permissions ===== -->
+
+    <!-- Android 13+ (API 33): Laufzeit-Erlaubnis für Benachrichtigungen -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Internet (bereits vorhanden) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!--
+    Optional (zukünftig), falls du nach Geräte-Neustart Erinnerungen automatisch
+    neu planen willst: dann in der App einen BOOT_COMPLETED-Receiver implementieren.
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    -->
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -31,11 +45,19 @@
             android:grantUriPermissions="true">
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths"></meta-data>
+                android:resource="@xml/file_paths" />
         </provider>
+
+        <!--
+        Optional (zukünftig), nur wenn du oben RECEIVE_BOOT_COMPLETED nutzt:
+        <receiver
+            android:name=".BootReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+        -->
     </application>
-
-    <!-- Permissions -->
-
-    <uses-permission android:name="android.permission.INTERNET" />
 </manifest>

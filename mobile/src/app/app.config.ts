@@ -1,3 +1,4 @@
+// mobile/src/app/app.config.ts
 import {
   ApplicationConfig,
   provideBrowserGlobalErrorListeners,
@@ -5,13 +6,13 @@ import {
 } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { provideIonicAngular } from '@ionic/angular/standalone';
-import { appRoutes } from './app.routes';
+import { routes } from './app.routes';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideZoneChangeDetection({ eventCoalescing: true }),
-    provideRouter(appRoutes),
-    provideIonicAngular(), // statt IonicModule.forRoot()
+    provideIonicAngular(),
+    provideRouter(routes),
   ],
 };
