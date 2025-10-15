@@ -1,0 +1,52 @@
+:host { display: block; }
+
+.tl-wrap {
+  position: relative;
+  width: 100%;
+  /* unten etwas Luft; exakter Kartenabstand steuern wir über die Seite */
+  padding: 4px 0 14px 0; /* 14px ~ Abstand wie oben beim Titel */
+  --h: 20px; /* sichtbare Tick-Zone */
+}
+
+.tl-svg {
+  display: block;
+  width: 100%;
+  height: var(--h);
+  overflow: visible;
+}
+
+/* Linie & Ticks */
+.base-line {
+  stroke: rgba(255,255,255,0.25);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+.tick-all,
+.tick-done {
+  stroke-width: 2;
+  stroke-linecap: square;
+  vector-effect: non-scaling-stroke;
+}
+.tick-all { stroke: rgba(255,255,255,0.25); }
+.tick-done { stroke: #ffc400; }
+
+/* Monatskürzel im HTML-Overlay (nicht skaliert/gestreckt) */
+.month-layer {
+  position: absolute;
+  left: 0; right: 0;
+  /* Abstand von Tick-Unterkante: ähnlich labelGapPx, plus etwas Puffer */
+  top: calc(var(--h) + 8px);
+  height: 0; /* wir positionieren nur die Spans */
+}
+
+.month {
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  /* 3px kleiner als --font-base (Default 18px -> 15px), mit sinnvollen Grenzen */
+  font-size: clamp(12px, calc(var(--font-base, 18px) - 3px), 16px);
+  line-height: 1;
+  color: rgba(255,255,255,0.80);
+  user-select: none;
+  pointer-events: none;
+}

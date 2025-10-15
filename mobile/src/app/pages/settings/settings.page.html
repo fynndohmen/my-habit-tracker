@@ -14,26 +14,31 @@
       class="card"
       *ngFor="let h of (habits$ | async); trackBy: trackById"
     >
+      <!-- GRID: 2 Reihen, 2 Spalten -->
       <div class="row">
-        <div class="name">{{ h.name }}</div>
 
-        <div class="streaks">
-          <div class="line">
-            Current&nbsp;streak:
-            <span class="num" [style.color]="colorCurrent(h.id)">
-              {{ currentStreak(h.id) }}
-            </span>
-          </div>
-          <div class="line">
-            Longest&nbsp;streak:
-            <span class="num" [style.color]="colorLongest(h.id)">
-              {{ longestStreak(h.id) }}
-            </span>
+        <!-- Spalte links (Zeile 1) -->
+        <div class="info">
+          <div class="name">{{ h.name }}</div>
+
+          <div class="streaks">
+            <div class="line">
+              Current&nbsp;streak:
+              <span class="num" [style.color]="colorCurrent(h.id)">
+                {{ currentStreak(h.id) }}
+              </span>
+            </div>
+            <div class="line">
+              Longest&nbsp;streak:
+              <span class="num" [style.color]="colorLongest(h.id)">
+                {{ longestStreak(h.id) }}
+              </span>
+            </div>
           </div>
         </div>
 
+        <!-- Spalte rechts (Zeile 1) -->
         <div class="actions">
-          <!-- Alarm (Edit notifications) -->
           <ion-button
             class="alarm"
             fill="clear"
@@ -44,7 +49,6 @@
             <ion-icon name="alarm-outline" slot="icon-only"></ion-icon>
           </ion-button>
 
-          <!-- Reset -->
           <ion-button
             class="reset"
             fill="clear"
@@ -55,7 +59,6 @@
             <ion-icon name="refresh-outline" slot="icon-only"></ion-icon>
           </ion-button>
 
-          <!-- Delete -->
           <ion-button
             class="delete"
             fill="clear"
@@ -64,6 +67,16 @@
             (click)="confirmDelete(h.id, $event)"
           >✕</ion-button>
         </div>
+
+        <!-- ZEILE 2: Timeline IMMER unter allem, über volle Breite -->
+        <div class="timeline-row">
+          <app-checkin-timeline
+            [completedDays]="h.completedDays || []"
+            [daysBack]="90"
+            [heightPx]="20">
+          </app-checkin-timeline>
+        </div>
+
       </div>
     </ion-item>
   </ion-list>
@@ -80,8 +93,8 @@
   <!-- Reset: Auswahl -->
   <ion-alert
     [isOpen]="resetChoiceOpen"
-    header="Reset streak"
-    message="Which streak data do you want to reset?"
+    [header]="resetChoiceHeader"
+    [message]="'Select one or both options below.'"
     [inputs]="resetChoiceInputs"
     [buttons]="resetChoiceButtons"
     (didDismiss)="proceedAfterChoiceIfAnyPublicAdapter()">
@@ -90,7 +103,7 @@
   <!-- Reset: Bestätigung -->
   <ion-alert
     [isOpen]="resetConfirmOpen"
-    header="Are you sure?"
+    [header]="resetConfirmHeader"
     [message]="resetConfirmMessage"
     [buttons]="resetConfirmButtons"
     (didDismiss)="resetConfirmOpen = false">

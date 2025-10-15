@@ -1,0 +1,42 @@
+<div class="tl-wrap" [style.--h.px]="heightPx">
+  <!-- SVG-Layer: Linie + Ticks (darf gestreckt werden) -->
+  <svg
+    class="tl-svg"
+    [attr.viewBox]="'0 0 ' + widthViewBox + ' ' + heightPx"
+    preserveAspectRatio="none"
+  >
+    <!-- Basislinie -->
+    <line
+      x1="0" [attr.y1]="yBase"
+      [attr.x2]="widthViewBox" [attr.y2]="yBase"
+      class="base-line"
+    ></line>
+
+    <!-- Alle Tage (Basisfarbe) -->
+    <ng-container *ngFor="let x of ticksAllX">
+      <line
+        [attr.x1]="x" [attr.y1]="yTickTop"
+        [attr.x2]="x" [attr.y2]="yTickBottom"
+        class="tick-all"
+      ></line>
+    </ng-container>
+
+    <!-- Erledigte Tage (gelb) -->
+    <ng-container *ngFor="let x of ticksDoneX">
+      <line
+        [attr.x1]="x" [attr.y1]="yTickTop"
+        [attr.x2]="x" [attr.y2]="yTickBottom"
+        class="tick-done"
+      ></line>
+    </ng-container>
+  </svg>
+
+  <!-- HTML-Overlay-Layer: Monatskürzel (nicht verzerren) -->
+  <div class="month-layer">
+    <span
+      class="month"
+      *ngFor="let m of monthMarks"
+      [style.left.%]="m.leftPct"
+    >{{ m.label }}</span>
+  </div>
+</div>

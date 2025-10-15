@@ -1,18 +1,19 @@
+// mobile/src/app/pages/settings/settings.page.ts
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-
-// Deutsch: Standalone-Bausteine EXPLIZIT importieren, inkl. IonIcon
 import {
   IonHeader, IonToolbar, IonTitle, IonButtons, IonBackButton,
   IonContent, IonList, IonItem, IonButton, IonAlert, IonIcon
 } from '@ionic/angular/standalone';
-
 import { RouterModule } from '@angular/router';
 import { HabitService } from '../../habit.service';
 
-// Deutsch: Ionicons registrieren (Reset + Alarm)
+// Icons
 import { addIcons } from 'ionicons';
-import { refreshOutline, refreshCircleOutline, alarmOutline } from 'ionicons/icons';
+import { refreshOutline, alarmOutline } from 'ionicons/icons';
+
+// Timeline
+import { CheckinTimelineComponent } from '../../components/checkin-timeline/checkin-timeline.component';
 
 @Component({
   standalone: true,
@@ -23,17 +24,16 @@ import { refreshOutline, refreshCircleOutline, alarmOutline } from 'ionicons/ico
     CommonModule,
     RouterModule,
     IonHeader, IonToolbar, IonTitle, IonButtons, IonBackButton,
-    IonContent, IonList, IonItem, IonButton, IonAlert, IonIcon
+    IonContent, IonList, IonItem, IonButton, IonAlert, IonIcon,
+    CheckinTimelineComponent,
   ],
 })
 export class SettingsPage {
   private readonly habitSvc = inject(HabitService);
 
   constructor() {
-    // Deutsch: Icons einmalig für diese Page registrieren
     addIcons({
       'refresh-outline': refreshOutline,
-      'refresh-circle-outline': refreshCircleOutline,
       'alarm-outline': alarmOutline,
     });
   }
@@ -41,7 +41,30 @@ export class SettingsPage {
   readonly habits$ = (this.habitSvc as any).habits$;
   trackById = (_: number, h: any) => h?.id;
 
-  // --- Streak-Werte aus dem Service ---
+  // ======== Streak-Farben =========
+  /** Farbskala: 0–6 gelb, ≥7 grün, ≥31 cyan, ≥93 blau, ≥186 magenta, ≥365 rot */
+  private colorForStreakDays(days: number): string {
+    if (days >= 365) return '#ef4444';
+    if (days >= 186) return '#d946ef';
+    if (days >= 93)  return '#3b82f6';
+    if (days >= 31)  return '#06b6d4';
+    if (days >= 7)   return '#22c55e';
+    return '#ffc400';
+  }
+
+  /** FIX: current==0 => immer weiß, sonst Skala */
+  colorCurrent(id: string): string {
+    const c = this.currentStreak(id);
+    return c <= 0 ? '#ffffff' : this.colorForStreakDays(c);
+  }
+
+  /** longest==0 => weiß, sonst Skala */
+  colorLongest(id: string): string {
+    const d = this.longestStreak(id);
+    return d <= 0 ? '#ffffff' : this.colorForStreakDays(d);
+  }
+
+  // ======== Werte aus Service (verträglich zu Varianten) ========
   currentStreak(id: string): number {
     const svc: any = this.habitSvc;
     return (svc.currentStreak?.(id) ?? svc.getCurrentStreak?.(id) ?? 0) as number;
@@ -51,27 +74,7 @@ export class SettingsPage {
     return (svc.longestStreak?.(id) ?? svc.getLongestStreak?.(id) ?? 0) as number;
   }
 
-  // --- Farbskala ---
-  private colorForStreakDays(days: number): string {
-    if (days >= 365) return '#ef4444';
-    if (days >= 186) return '#d946ef';
-    if (days >= 93)  return '#3b82f6';
-    if (days >= 31)  return '#06b6d4';
-    if (days >= 7)   return '#22c55e';
-    return '#ffc400';
-  }
-  colorCurrent(id: string): string {
-    const everCompleted = this.longestStreak(id) > 0;
-    if (!everCompleted) return '#ffffff';
-    return this.colorForStreakDays(this.currentStreak(id));
-  }
-  colorLongest(id: string): string {
-    const d = this.longestStreak(id);
-    if (d <= 0) return '#ffffff';
-    return this.colorForStreakDays(d);
-  }
-
-  // ===== Delete-Dialog =====
+  // ======== Delete ========
   alertOpen = false;
   alertButtons: any[] = [];
   private pendingDeleteId: string | null = null;
@@ -97,36 +100,46 @@ export class SettingsPage {
     this.alertOpen = false;
   }
 
-  // ===== Reset-Flow =====
+  // ======== Reset-Flow (current / longest / both) ========
   resetChoiceOpen = false;
   resetConfirmOpen = false;
   resetChoiceInputs: any[] = [];
   resetChoiceButtons: any[] = [];
   resetConfirmButtons: any[] = [];
 
-  resetChoice: 'current' | 'longest' | null = null;
+  resetChoice: Array<'current'|'longest'> = [];
   selectedResetHabitId: string | null = null;
   selectedResetHabitName: string | null = null;
+
+  get resetChoiceHeader(): string { return 'Choose streak data to reset'; }
+  get resetConfirmHeader(): string { return 'Confirm reset'; }
+  get resetConfirmMessage(): string {
+    const name = this.selectedResetHabitName || '';
+    const parts = this.resetChoice.includes('current') && this.resetChoice.includes('longest')
+      ? 'current and longest streak'
+      : this.resetChoice.includes('current')
+        ? 'current streak'
+        : 'longest streak';
+    return `This will permanently reset the ${parts} for “${name}”. This action cannot be undone.`;
+  }
 
   onResetStreakClick(habit: any, ev?: Event) {
     ev?.stopPropagation();
     this.selectedResetHabitId = habit?.id ?? null;
     this.selectedResetHabitName = habit?.name ?? null;
-    this.openResetChoiceAlert();
-  }
 
-  private openResetChoiceAlert() {
+    // Mehrfachauswahl erlaubt
     this.resetChoiceInputs = [
-      { type: 'radio', label: 'Current streak', value: 'current', checked: true },
-      { type: 'radio', label: 'Longest streak', value: 'longest' },
+      { type: 'checkbox', label: 'Current streak', value: 'current', checked: true },
+      { type: 'checkbox', label: 'Longest streak', value: 'longest' },
     ];
     this.resetChoiceButtons = [
       { text: 'Cancel', role: 'cancel' },
       {
         text: 'Continue',
         role: 'confirm',
-        handler: (value: 'current' | 'longest') => {
-          this.resetChoice = value ?? 'current';
+        handler: (values: Array<'current'|'longest'>) => {
+          this.resetChoice = Array.isArray(values) ? values : [];
         },
       },
     ];
@@ -135,13 +148,7 @@ export class SettingsPage {
 
   proceedAfterChoiceIfAnyPublicAdapter() {
     this.resetChoiceOpen = false;
-    if (this.resetChoice) this.openResetConfirmAlert();
-  }
-
-  get resetConfirmMessage(): string {
-    const which = this.resetChoice === 'current' ? 'current' : 'longest';
-    const name = this.selectedResetHabitName || '';
-    return `This will permanently reset the ${which} streak for “${name}”. This action cannot be undone.`;
+    if (this.resetChoice.length > 0) this.openResetConfirmAlert();
   }
 
   private openResetConfirmAlert() {
@@ -154,40 +161,51 @@ export class SettingsPage {
 
   private async applyReset() {
     const id = this.selectedResetHabitId;
-    const choice = this.resetChoice;
-    if (!id || !choice) {
+    const choices = this.resetChoice;
+    if (!id || choices.length === 0) {
       this.resetConfirmOpen = false;
       return;
     }
     const svc: any = this.habitSvc;
 
     try {
-      if (choice === 'current') {
-        if (svc.resetCurrentStreak) {
-          await svc.resetCurrentStreak(id);
-        } else {
-          const upd = await (svc.getHabitById?.(id) ?? svc.findHabitById?.(id));
-          if (upd) {
-            upd.currentStreak = 0;
-            await (svc.updateHabit?.(upd) ?? svc.saveHabit?.(upd) ?? svc.upsertHabit?.(upd));
+      // --- CURRENT zurücksetzen: current=0, heute wieder offen; LONGEST UNVERÄNDERT ---
+      if (choices.includes('current')) {
+        const upd = await (svc.getHabitById?.(id) ?? svc.findHabitById?.(id));
+        if (upd) {
+          upd.currentStreak = 0;
+          // „heute offen“ erzwingen:
+          const today = this.todayKey();
+          if (upd.lastFullCompleteDate === today) {
+            upd.lastFullCompleteDate = undefined;
           }
+          upd.todayCount = 0;
+          // LONGEST NICHT anfassen!
+          await (svc.updateHabit?.(upd) ?? svc.saveHabit?.(upd) ?? svc.upsertHabit?.(upd));
         }
-      } else {
-        if (svc.resetLongestStreak) {
-          await svc.resetLongestStreak(id);
-        } else {
-          const upd = await (svc.getHabitById?.(id) ?? svc.findHabitById?.(id));
-          if (upd) {
-            upd.longestStreak = 0;
-            await (svc.updateHabit?.(upd) ?? svc.saveHabit?.(upd) ?? svc.upsertHabit?.(upd));
-          }
+      }
+
+      // --- LONGEST zurücksetzen: auf aktuellen current setzen ---
+      if (choices.includes('longest')) {
+        const upd = await (svc.getHabitById?.(id) ?? svc.findHabitById?.(id));
+        if (upd) {
+          upd.longestStreak = Math.max(0, upd.currentStreak ?? 0);
+          await (svc.updateHabit?.(upd) ?? svc.saveHabit?.(upd) ?? svc.upsertHabit?.(upd));
         }
       }
     } finally {
       this.resetConfirmOpen = false;
-      this.resetChoice = null;
+      this.resetChoice = [];
       this.selectedResetHabitId = null;
       this.selectedResetHabitName = null;
     }
+  }
+
+  private todayKey(): string {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
   }
 }

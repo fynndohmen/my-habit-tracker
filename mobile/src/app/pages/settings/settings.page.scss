@@ -1,5 +1,4 @@
 :host {
-  /* Farben wie auf der Add-Habit-Seite */
   --page-bg: #0f1115;
   --card-bg: #171a20;
   --text: #ffffff;
@@ -11,23 +10,17 @@
 }
 
 /* Header */
-ion-header,
-ion-toolbar {
+ion-header, ion-toolbar {
   --background: var(--page-bg);
   --color: var(--text);
   --border-width: 0;
   --border-color: transparent;
   box-shadow: none;
 }
-ion-title {
-  font-size: 20px;
-  font-weight: 700;
-}
+ion-title { font-size: 20px; font-weight: 700; }
 
 /* Content */
-ion-content {
-  --background: var(--page-bg);
-}
+ion-content { --background: var(--page-bg); }
 ion-content::part(background),
 ion-content::part(scroll) { background: var(--page-bg) !important; }
 ion-content::part(fixed) { background: transparent !important; }
@@ -43,71 +36,64 @@ ion-list::part(container) {
   gap: 2px; /* 2px Abstand zwischen Kacheln */
 }
 
-/* Karte (4px Rundung an allen Ecken) */
+/* Karte */
 ion-item.card {
   --background: var(--card-bg);
   --color: var(--text);
   --padding-start: 14px;
   --inner-padding-end: 14px;
   --min-height: 84px;
-  border-radius: 4px;              /* <— NEU */
+  border-radius: 4px;
   font-size: var(--font-base);
 }
 ion-item.card::part(native) {
   background: var(--card-bg);
-  border-radius: 4px;              /* <— NEU */
+  border-radius: 4px;
+  overflow: visible; /* nie beschneiden (Timeline/Labels) */
 }
 
-/* Layout in der Kachel */
+/* === GRID-LAYOUT ===
+   Zeile 1: info | actions
+   Zeile 2: timeline über beide Spalten
+*/
 .row {
   display: grid;
-  grid-template-columns: 1fr max-content; /* Inhalt | Actions */
-  grid-template-rows: auto auto;          /* Name | Streaks */
-  align-items: center;
-  gap: var(--card-gap);
+  grid-template-columns: 1fr max-content;
+  grid-template-rows: auto auto;
+  align-items: start;
+  column-gap: var(--card-gap);
+  row-gap: 8px;
   width: 100%;
-  padding-top: 5px;     /* etwas mehr Luft oben */
-  padding-bottom: 5px;  /* und unten */
+  padding: 6px 0;
 }
 
+/* Linke Spalte (Zeile 1) */
+.info { grid-column: 1; grid-row: 1; min-width: 0; }
 .name {
-  grid-column: 1;
-  grid-row: 1;
-  min-width: 0;
   font-weight: 800;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-bottom: 4px;
 }
-
 .streaks {
-  grid-column: 1;
-  grid-row: 2;
   color: var(--muted);
   line-height: 1.25;
   text-align: left;
-
   .line { white-space: nowrap; }
-  .num {
-    font-weight: 900;
-    color: var(--text);
-    margin-left: 6px;
-  }
+  .num { font-weight: 900; color: var(--text); margin-left: 6px; }
 }
 
-/* Actions rechts */
+/* Rechte Spalte (Zeile 1) */
 .actions {
   grid-column: 2;
-  grid-row: 1 / span 2;
+  grid-row: 1;
   justify-self: end;
-
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
-
-/* Buttons kompakt & transparent */
 .actions ion-button {
   --padding-start: 8px;
   --padding-end: 8px;
@@ -119,22 +105,27 @@ ion-item.card::part(native) {
   --background-activated: transparent;
   --background-focused: transparent;
 }
-
-/* Muted white für Alarm + Reset; einheitliche Icon-Größe */
 .actions ion-button.alarm,
-.actions ion-button.reset {
-  --color: var(--muted);
-  color: var(--muted);
-}
+.actions ion-button.reset { --color: var(--muted); color: var(--muted); }
 .actions ion-button.alarm ion-icon,
-.actions ion-button.reset ion-icon {
-  font-size: 22px; /* feste Größe */
+.actions ion-button.reset ion-icon { font-size: 22px; }
+.actions ion-button.delete { --color: #ff6b6b; color: #ff6b6b; font-size: 18px; }
+.actions ion-button.delete::part(native) { transition: none; }
+
+/* ZEILE 2: Timeline immer darunter und über volle Breite */
+.timeline-row {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+.timeline-row app-checkin-timeline {
+  display: block;
+  margin-top: 2px;
+  padding-bottom: 12px; /* kompakter: ähnlich Abstand oben beim Titel */
 }
 
-/* Delete rot */
-.actions ion-button.delete {
-  --color: #ff6b6b;
-  color: #ff6b6b;
-  font-size: 18px; /* ✕ */
+/* kleine Screens: Buttons minimal kleiner */
+@media (max-width: 360px) {
+  .actions ion-button { min-width: 32px; height: 32px; }
+  .actions ion-button.alarm ion-icon,
+  .actions ion-button.reset ion-icon { font-size: 20px; }
 }
-.actions ion-button.delete::part(native) { transition: none; }
