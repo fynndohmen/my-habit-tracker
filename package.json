@@ -31,6 +31,7 @@
     "@angular/cli": "~20.1.0",
     "@angular/compiler-cli": "~20.1.0",
     "@angular/language-service": "~20.1.0",
+    "@capacitor/assets": "^3.0.5",
     "@eslint/js": "^9.8.0",
     "@nrwl/angular": "^19.8.4",
     "@nx/angular": "21.3.11",

@@ -1,16 +1,16 @@
-// mobile/src/app/pages/settings/settings.page.ts
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+
+// Ionic Standalone
 import {
   IonHeader, IonToolbar, IonTitle, IonButtons, IonBackButton,
   IonContent, IonList, IonItem, IonButton, IonAlert, IonIcon
 } from '@ionic/angular/standalone';
+
 import { RouterModule } from '@angular/router';
 import { HabitService } from '../../habit.service';
-
-// Icons
 import { addIcons } from 'ionicons';
-import { refreshOutline, alarmOutline } from 'ionicons/icons';
+import { refreshOutline, refreshCircleOutline, alarmOutline } from 'ionicons/icons';
 
 // Timeline
 import { CheckinTimelineComponent } from '../../components/checkin-timeline/checkin-timeline.component';
@@ -25,7 +25,7 @@ import { CheckinTimelineComponent } from '../../components/checkin-timeline/chec
     RouterModule,
     IonHeader, IonToolbar, IonTitle, IonButtons, IonBackButton,
     IonContent, IonList, IonItem, IonButton, IonAlert, IonIcon,
-    CheckinTimelineComponent,
+    CheckinTimelineComponent
   ],
 })
 export class SettingsPage {
@@ -34,6 +34,7 @@ export class SettingsPage {
   constructor() {
     addIcons({
       'refresh-outline': refreshOutline,
+      'refresh-circle-outline': refreshCircleOutline,
       'alarm-outline': alarmOutline,
     });
   }
@@ -41,8 +42,7 @@ export class SettingsPage {
   readonly habits$ = (this.habitSvc as any).habits$;
   trackById = (_: number, h: any) => h?.id;
 
-  // ======== Streak-Farben =========
-  /** Farbskala: 0–6 gelb, ≥7 grün, ≥31 cyan, ≥93 blau, ≥186 magenta, ≥365 rot */
+  // ===== Streak-Farben wie in der App =====
   private colorForStreakDays(days: number): string {
     if (days >= 365) return '#ef4444';
     if (days >= 186) return '#d946ef';
@@ -51,20 +51,6 @@ export class SettingsPage {
     if (days >= 7)   return '#22c55e';
     return '#ffc400';
   }
-
-  /** FIX: current==0 => immer weiß, sonst Skala */
-  colorCurrent(id: string): string {
-    const c = this.currentStreak(id);
-    return c <= 0 ? '#ffffff' : this.colorForStreakDays(c);
-  }
-
-  /** longest==0 => weiß, sonst Skala */
-  colorLongest(id: string): string {
-    const d = this.longestStreak(id);
-    return d <= 0 ? '#ffffff' : this.colorForStreakDays(d);
-  }
-
-  // ======== Werte aus Service (verträglich zu Varianten) ========
   currentStreak(id: string): number {
     const svc: any = this.habitSvc;
     return (svc.currentStreak?.(id) ?? svc.getCurrentStreak?.(id) ?? 0) as number;
@@ -74,7 +60,41 @@ export class SettingsPage {
     return (svc.longestStreak?.(id) ?? svc.getLongestStreak?.(id) ?? 0) as number;
   }
 
-  // ======== Delete ========
+  /** FIX: Wenn current==0 -> immer weiß (unabhängig von Longest) */
+  colorCurrent(id: string): string {
+    const cur = this.currentStreak(id);
+    if (cur <= 0) return '#ffffff';
+    return this.colorForStreakDays(cur);
+  }
+  colorLongest(id: string): string {
+    const d = this.longestStreak(id);
+    if (d <= 0) return '#ffffff';
+    return this.colorForStreakDays(d);
+  }
+
+  /** ===== Timeline-Epoch für *tägliche* Habits =====
+   * Gibt den **ersten Kalendertag der aktuellen Serie** zurück (YYYY-MM-DD).
+   * So trennt die Timeline die aktuelle Serie farblich von der vorherigen.
+   * Beispiel: current=1 -> epoch = heute (heutiger Tick bleibt gelb).
+   */
+  firstDayOfCurrentStreak(id: string): string | undefined {
+    const cur = this.currentStreak(id);
+    if (cur <= 0) return undefined; // keine Serie aktiv → nichts zu trennen
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - (cur - 1));
+    return this.dateKeyLocal(d);
+  }
+
+  /** lokaler DateKey (YYYY-MM-DD) */
+  private dateKeyLocal(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dd}`;
+  }
+
+  // ===== Löschen =====
   alertOpen = false;
   alertButtons: any[] = [];
   private pendingDeleteId: string | null = null;
@@ -88,67 +108,85 @@ export class SettingsPage {
     ];
     this.alertOpen = true;
   }
-
   private doDelete() {
     if (!this.pendingDeleteId) return;
     const svc: any = this.habitSvc;
-    svc.deleteHabit?.(this.pendingDeleteId)
+    (svc.deleteHabit?.(this.pendingDeleteId)
       ?? svc.removeHabit?.(this.pendingDeleteId)
       ?? svc.delete?.(this.pendingDeleteId)
-      ?? svc.remove?.(this.pendingDeleteId);
+      ?? svc.remove?.(this.pendingDeleteId));
     this.pendingDeleteId = null;
     this.alertOpen = false;
   }
 
-  // ======== Reset-Flow (current / longest / both) ========
+  // ===== Reset-Flow: Current / Longest / Timeline =====
   resetChoiceOpen = false;
   resetConfirmOpen = false;
+
   resetChoiceInputs: any[] = [];
   resetChoiceButtons: any[] = [];
   resetConfirmButtons: any[] = [];
 
-  resetChoice: Array<'current'|'longest'> = [];
+  resetSelection: { current: boolean; longest: boolean; timeline: boolean } = {
+    current: true,
+    longest: false,
+    timeline: false,
+  };
   selectedResetHabitId: string | null = null;
   selectedResetHabitName: string | null = null;
 
-  get resetChoiceHeader(): string { return 'Choose streak data to reset'; }
+  get resetChoiceHeader(): string { return 'Reset data'; }
   get resetConfirmHeader(): string { return 'Confirm reset'; }
-  get resetConfirmMessage(): string {
-    const name = this.selectedResetHabitName || '';
-    const parts = this.resetChoice.includes('current') && this.resetChoice.includes('longest')
-      ? 'current and longest streak'
-      : this.resetChoice.includes('current')
-        ? 'current streak'
-        : 'longest streak';
-    return `This will permanently reset the ${parts} for “${name}”. This action cannot be undone.`;
-  }
 
   onResetStreakClick(habit: any, ev?: Event) {
     ev?.stopPropagation();
     this.selectedResetHabitId = habit?.id ?? null;
     this.selectedResetHabitName = habit?.name ?? null;
+    this.openResetChoiceAlert();
+  }
 
-    // Mehrfachauswahl erlaubt
+  private openResetChoiceAlert() {
     this.resetChoiceInputs = [
-      { type: 'checkbox', label: 'Current streak', value: 'current', checked: true },
-      { type: 'checkbox', label: 'Longest streak', value: 'longest' },
+      { type: 'checkbox', label: 'Current streak', value: 'current', checked: this.resetSelection.current },
+      { type: 'checkbox', label: 'Longest streak', value: 'longest', checked: this.resetSelection.longest },
+      { type: 'checkbox', label: 'Timeline history (also resets current streak)', value: 'timeline', checked: this.resetSelection.timeline },
     ];
     this.resetChoiceButtons = [
       { text: 'Cancel', role: 'cancel' },
       {
         text: 'Continue',
         role: 'confirm',
-        handler: (values: Array<'current'|'longest'>) => {
-          this.resetChoice = Array.isArray(values) ? values : [];
+        handler: (values: string[] | string) => {
+          const arr = Array.isArray(values) ? values : (values ? [values] : []);
+          this.resetSelection = {
+            current: arr.includes('current'),
+            longest: arr.includes('longest'),
+            timeline: arr.includes('timeline'),
+          };
         },
       },
     ];
     this.resetChoiceOpen = true;
   }
 
-  proceedAfterChoiceIfAnyPublicAdapter() {
+  /** Nur bei role==='confirm' weitermachen */
+  onChoiceDismiss(ev: any) {
     this.resetChoiceOpen = false;
-    if (this.resetChoice.length > 0) this.openResetConfirmAlert();
+    const role = ev?.detail?.role;
+    if (role !== 'confirm') return; // Cancel → nichts tun
+
+    const any = this.resetSelection.current || this.resetSelection.longest || this.resetSelection.timeline;
+    if (any) this.openResetConfirmAlert();
+  }
+
+  get resetConfirmMessage(): string {
+    const parts: string[] = [];
+    if (this.resetSelection.current) parts.push('current streak');
+    if (this.resetSelection.longest) parts.push('longest streak');
+    if (this.resetSelection.timeline) parts.push('timeline history (and current streak)');
+    const what = parts.join(', ').replace(/, ([^,]*)$/, ' and $1');
+    const name = this.selectedResetHabitName || '';
+    return `This will reset the ${what} for “${name}”. This action cannot be undone.`;
   }
 
   private openResetConfirmAlert() {
@@ -161,51 +199,30 @@ export class SettingsPage {
 
   private async applyReset() {
     const id = this.selectedResetHabitId;
-    const choices = this.resetChoice;
-    if (!id || choices.length === 0) {
-      this.resetConfirmOpen = false;
-      return;
-    }
+    if (!id) { this.resetConfirmOpen = false; return; }
     const svc: any = this.habitSvc;
 
     try {
-      // --- CURRENT zurücksetzen: current=0, heute wieder offen; LONGEST UNVERÄNDERT ---
-      if (choices.includes('current')) {
-        const upd = await (svc.getHabitById?.(id) ?? svc.findHabitById?.(id));
-        if (upd) {
-          upd.currentStreak = 0;
-          // „heute offen“ erzwingen:
-          const today = this.todayKey();
-          if (upd.lastFullCompleteDate === today) {
-            upd.lastFullCompleteDate = undefined;
-          }
-          upd.todayCount = 0;
-          // LONGEST NICHT anfassen!
-          await (svc.updateHabit?.(upd) ?? svc.saveHabit?.(upd) ?? svc.upsertHabit?.(upd));
-        }
+      // Timeline zuerst – mit Longest-Preservation abhängig von der Auswahl
+      if (this.resetSelection.timeline && typeof svc.resetTimelineData === 'function') {
+        const preserveLongest = !this.resetSelection.longest;
+        await svc.resetTimelineData(id, preserveLongest, true);
       }
 
-      // --- LONGEST zurücksetzen: auf aktuellen current setzen ---
-      if (choices.includes('longest')) {
-        const upd = await (svc.getHabitById?.(id) ?? svc.findHabitById?.(id));
-        if (upd) {
-          upd.longestStreak = Math.max(0, upd.currentStreak ?? 0);
-          await (svc.updateHabit?.(upd) ?? svc.saveHabit?.(upd) ?? svc.upsertHabit?.(upd));
-        }
+      // Current separat (nur wenn Timeline nicht bereits current auf 0 gesetzt hat)
+      if (this.resetSelection.current && !this.resetSelection.timeline && typeof svc.resetCurrentStreak === 'function') {
+        await svc.resetCurrentStreak(id);
+      }
+
+      // Longest explizit setzen
+      if (this.resetSelection.longest && typeof svc.resetLongestStreak === 'function') {
+        await svc.resetLongestStreak(id);
       }
     } finally {
       this.resetConfirmOpen = false;
-      this.resetChoice = [];
+      this.resetSelection = { current: true, longest: false, timeline: false };
       this.selectedResetHabitId = null;
       this.selectedResetHabitName = null;
     }
-  }
-
-  private todayKey(): string {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
   }
 }

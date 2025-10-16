@@ -29,6 +29,8 @@ export class HabitsPage {
     const p = this.habitSvc.progressFor(id);
     return !!p && p.count >= p.target;
   }
+
+  // Zahlen (bleiben period-spezifisch)
   currentStreak(id: string): number {
     const svc: any = this.habitSvc as any;
     return (svc.currentStreak?.(id) ?? svc.getCurrentStreak?.(id) ?? 0) as number;
@@ -37,30 +39,35 @@ export class HabitsPage {
     const svc: any = this.habitSvc as any;
     return (svc.longestStreak?.(id) ?? svc.getLongestStreak?.(id) ?? 0) as number;
   }
-  trackById = (_: number, h: any) => h.id;
 
-  /** Farbskala für Streak-Werte */
-  private colorForStreak(value: number): string {
-    if (value >= 365) return '#ef4444'; // rot
-    if (value >= 186) return '#d946ef'; // magenta
-    if (value >= 93)  return '#3b82f6'; // blau
-    if (value >= 31)  return '#06b6d4'; // cyan
-    if (value >= 7)   return '#22c55e'; // grün
+  // ===== Farblogik NUR nach *Tagen* (Momentum) =====
+  private momentumDays(id: string): number {
+    const svc: any = this.habitSvc as any;
+    return (svc.currentMomentumDays?.(id) ?? 0) as number;
+  }
+  /** Farbskala nach *Tagen* */
+  private colorForDays(days: number): string {
+    if (days >= 365) return '#ef4444'; // rot
+    if (days >= 186) return '#d946ef'; // magenta
+    if (days >= 93)  return '#3b82f6'; // blau
+    if (days >= 31)  return '#06b6d4'; // cyan
+    if (days >= 7)   return '#22c55e'; // grün
     return '#ffc400';                   // gelb (0–6)
   }
 
+  /** Rahmenfarbe = Momentum-Days */
   frameColor(id: string): string {
-    return this.colorForStreak(this.currentStreak(id));
+    return this.colorForDays(this.momentumDays(id));
   }
-
-  /** NEU: Textfarbe weiß, wenn currentStreak == 0; sonst skaliert */
+  /** Textfarbe: 0 → weiß; sonst Momentum-Farbe */
   streakTextColor(id: string): string {
-    const cur = this.currentStreak(id);
-    if (cur <= 0) return '#ffffff';
-    return this.colorForStreak(cur);
+    const d = this.momentumDays(id);
+    return d <= 0 ? '#ffffff' : this.colorForDays(d);
   }
 
-  // ==== Hold-Geste & „Gestern“-Flow (wie zuvor, unverändert relevante Teile) ====
+  trackById = (_: number, h: any) => h.id;
+
+  // ==== Hold-Geste & „Gestern“-Flow (dein bestehender Code, unverändert) ====
 
   private static readonly HOLD_MS = 700;
   private _holdPct = new Map<string, number>();

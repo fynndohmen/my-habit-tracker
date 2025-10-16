@@ -33,7 +33,7 @@ ion-list::part(container) {
   margin: 12px 0 24px;
   display: flex;
   flex-direction: column;
-  gap: 2px; /* 2px Abstand zwischen Kacheln */
+  gap: 2px;
 }
 
 /* Karte */
@@ -49,33 +49,31 @@ ion-item.card {
 ion-item.card::part(native) {
   background: var(--card-bg);
   border-radius: 4px;
-  overflow: visible; /* nie beschneiden (Timeline/Labels) */
+  overflow: visible; /* Timeline nicht abschneiden */
 }
 
-/* === GRID-LAYOUT ===
-   Zeile 1: info | actions
-   Zeile 2: timeline über beide Spalten
-*/
+/* GRID */
 .row {
   display: grid;
-  grid-template-columns: 1fr max-content;
-  grid-template-rows: auto auto;
-  align-items: start;
-  column-gap: var(--card-gap);
-  row-gap: 8px;
+  grid-template-columns: 1fr max-content;  /* links Info, rechts Actions */
+  grid-template-rows: auto auto;           /* Zeile 1: Daten, Zeile 2: Timeline */
+  gap: var(--card-gap);
   width: 100%;
-  padding: 6px 0;
+  padding-top: 8px;   /* = Abstand oben zum Kartenrand (wie unten 8px) */
+  padding-bottom: 0;  /* unten übernimmt die Timeline selbst 8px */
 }
-
-/* Linke Spalte (Zeile 1) */
 .info { grid-column: 1; grid-row: 1; min-width: 0; }
+.actions { grid-column: 2; grid-row: 1; justify-self: end; }
+.timeline-row { grid-column: 1 / span 2; grid-row: 2; }
+
+/* Inhalte */
 .name {
   font-weight: 800;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 .streaks {
   color: var(--muted);
@@ -85,11 +83,8 @@ ion-item.card::part(native) {
   .num { font-weight: 900; color: var(--text); margin-left: 6px; }
 }
 
-/* Rechte Spalte (Zeile 1) */
+/* Buttons */
 .actions {
-  grid-column: 2;
-  grid-row: 1;
-  justify-self: end;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -106,24 +101,27 @@ ion-item.card::part(native) {
   --background-focused: transparent;
 }
 .actions ion-button.alarm,
-.actions ion-button.reset { --color: var(--muted); color: var(--muted); }
+.actions ion-button.reset {
+  --color: var(--muted);
+  color: var(--muted);
+}
 .actions ion-button.alarm ion-icon,
 .actions ion-button.reset ion-icon { font-size: 22px; }
-.actions ion-button.delete { --color: #ff6b6b; color: #ff6b6b; font-size: 18px; }
+.actions ion-button.delete {
+  --color: #ff6b6b;
+  color: #ff6b6b;
+  font-size: 18px;
+}
 .actions ion-button.delete::part(native) { transition: none; }
 
-/* ZEILE 2: Timeline immer darunter und über volle Breite */
-.timeline-row {
-  grid-column: 1 / -1;
-  grid-row: 2;
-}
+/* Timeline-Host: Platz unten für Labels – 8px */
 .timeline-row app-checkin-timeline {
   display: block;
   margin-top: 2px;
-  padding-bottom: 12px; /* kompakter: ähnlich Abstand oben beim Titel */
+  padding-bottom: 8px; /* Abstand Labels → Kartenunterkante */
 }
 
-/* kleine Screens: Buttons minimal kleiner */
+/* Kleinere Displays */
 @media (max-width: 360px) {
   .actions ion-button { min-width: 32px; height: 32px; }
   .actions ion-button.alarm ion-icon,

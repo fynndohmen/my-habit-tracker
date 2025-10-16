@@ -1,42 +1,40 @@
-<div class="tl-wrap" [style.--h.px]="heightPx">
-  <!-- SVG-Layer: Linie + Ticks (darf gestreckt werden) -->
-  <svg
-    class="tl-svg"
-    [attr.viewBox]="'0 0 ' + widthViewBox + ' ' + heightPx"
-    preserveAspectRatio="none"
-  >
-    <!-- Basislinie -->
+<svg
+  [attr.width]="view.widthPx"
+  [attr.height]="view.heightPx + (showMonthLabels ? 18 : 0)"
+  xmlns="http://www.w3.org/2000/svg"
+  aria-hidden="true"
+  role="img">
+
+  <!-- Grundlinie -->
+  <line
+    class="line"
+    [attr.x1]="0" [attr.y1]="view.baselineY"
+    [attr.x2]="view.widthPx" [attr.y2]="view.baselineY" />
+
+  <!-- Alle Ticks (neutral) -->
+  <ng-container *ngFor="let x of view.tickXs">
     <line
-      x1="0" [attr.y1]="yBase"
-      [attr.x2]="widthViewBox" [attr.y2]="yBase"
-      class="base-line"
-    ></line>
+      class="tick"
+      [attr.x1]="x" [attr.y1]="view.tickTop"
+      [attr.x2]="x" [attr.y2]="view.tickBottom" />
+  </ng-container>
 
-    <!-- Alle Tage (Basisfarbe) -->
-    <ng-container *ngFor="let x of ticksAllX">
-      <line
-        [attr.x1]="x" [attr.y1]="yTickTop"
-        [attr.x2]="x" [attr.y2]="yTickBottom"
-        class="tick-all"
-      ></line>
-    </ng-container>
+  <!-- DONE-Ticks (farbig, überschreiben neutralen Tick per inline stroke) -->
+  <ng-container *ngFor="let d of view.doneColored">
+    <line
+      class="tick-done"
+      [attr.x1]="d.x" [attr.y1]="view.tickTop"
+      [attr.x2]="d.x" [attr.y2]="view.tickBottom"
+      [style.stroke]="d.color" />
+  </ng-container>
 
-    <!-- Erledigte Tage (gelb) -->
-    <ng-container *ngFor="let x of ticksDoneX">
-      <line
-        [attr.x1]="x" [attr.y1]="yTickTop"
-        [attr.x2]="x" [attr.y2]="yTickBottom"
-        class="tick-done"
-      ></line>
-    </ng-container>
-  </svg>
-
-  <!-- HTML-Overlay-Layer: Monatskürzel (nicht verzerren) -->
-  <div class="month-layer">
-    <span
+  <!-- Monatslabels -->
+  <ng-container *ngIf="showMonthLabels">
+    <text
       class="month"
-      *ngFor="let m of monthMarks"
-      [style.left.%]="m.leftPct"
-    >{{ m.label }}</span>
-  </div>
-</div>
+      *ngFor="let m of view.monthLabels"
+      [attr.x]="m.x"
+      [attr.y]="view.heightPx + 14"
+      text-anchor="middle">{{ m.text }}</text>
+  </ng-container>
+</svg>

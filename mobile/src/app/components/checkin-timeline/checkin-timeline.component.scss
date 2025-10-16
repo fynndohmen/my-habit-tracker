@@ -1,52 +1,36 @@
-:host { display: block; }
-
-.tl-wrap {
-  position: relative;
-  width: 100%;
-  /* unten etwas Luft; exakter Kartenabstand steuern wir über die Seite */
-  padding: 4px 0 14px 0; /* 14px ~ Abstand wie oben beim Titel */
-  --h: 20px; /* sichtbare Tick-Zone */
-}
-
-.tl-svg {
+:host {
   display: block;
-  width: 100%;
-  height: var(--h);
-  overflow: visible;
+  overflow-x: auto;   /* horizontal scrollbar, wenn nötig */
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
-/* Linie & Ticks */
-.base-line {
-  stroke: rgba(255,255,255,0.25);
-  stroke-width: 2;
-  vector-effect: non-scaling-stroke;
+/* Wenn die Timeline schmaler ist als der Container: zentriert darstellen */
+:host ::ng-deep svg {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
 }
-.tick-all,
+
+.line {
+  stroke: rgba(255,255,255,0.4);
+  stroke-width: 2;
+  shape-rendering: crispEdges;
+}
+
+.tick {
+  stroke: rgba(255,255,255,0.5); /* neutrale (nicht-done) Ticks */
+  stroke-width: 2;
+  shape-rendering: crispEdges;
+}
+
 .tick-done {
-  stroke-width: 2;
-  stroke-linecap: square;
-  vector-effect: non-scaling-stroke;
-}
-.tick-all { stroke: rgba(255,255,255,0.25); }
-.tick-done { stroke: #ffc400; }
-
-/* Monatskürzel im HTML-Overlay (nicht skaliert/gestreckt) */
-.month-layer {
-  position: absolute;
-  left: 0; right: 0;
-  /* Abstand von Tick-Unterkante: ähnlich labelGapPx, plus etwas Puffer */
-  top: calc(var(--h) + 8px);
-  height: 0; /* wir positionieren nur die Spans */
+  stroke-width: 3; /* leicht dicker, damit Farbe sicher übermalt */
+  shape-rendering: crispEdges;
 }
 
 .month {
-  position: absolute;
-  transform: translateX(-50%);
-  white-space: nowrap;
-  /* 3px kleiner als --font-base (Default 18px -> 15px), mit sinnvollen Grenzen */
-  font-size: clamp(12px, calc(var(--font-base, 18px) - 3px), 16px);
-  line-height: 1;
-  color: rgba(255,255,255,0.80);
-  user-select: none;
-  pointer-events: none;
+  fill: rgba(255,255,255,0.65);
+  font-size: 12px;
+  font-weight: 600;
 }

@@ -68,13 +68,19 @@
           >✕</ion-button>
         </div>
 
-        <!-- ZEILE 2: Timeline IMMER unter allem, über volle Breite -->
+        <!-- ZEILE 2: Timeline -->
         <div class="timeline-row">
           <app-checkin-timeline
             [completedDays]="h.completedDays || []"
-            [daysBack]="90"
-            [heightPx]="20">
-          </app-checkin-timeline>
+            [period]="h.period"
+            [target]="h.target"
+            [daysBack]="0"
+            [heightPx]="20"
+            [stepPx]="6"
+            [showMonthLabels]="true"
+            [startDateIso]="h.createdAt"
+            [epoch]="firstDayOfCurrentStreak(h.id)"
+          ></app-checkin-timeline>
         </div>
 
       </div>
@@ -97,7 +103,7 @@
     [message]="'Select one or both options below.'"
     [inputs]="resetChoiceInputs"
     [buttons]="resetChoiceButtons"
-    (didDismiss)="proceedAfterChoiceIfAnyPublicAdapter()">
+    (didDismiss)="onChoiceDismiss($event)">
   </ion-alert>
 
   <!-- Reset: Bestätigung -->
