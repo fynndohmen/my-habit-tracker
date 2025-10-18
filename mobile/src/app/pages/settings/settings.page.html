@@ -1,3 +1,4 @@
+<!-- mobile/src/app/pages/settings/settings.page.html -->
 <ion-header>
   <ion-toolbar>
     <ion-buttons slot="start">
@@ -14,10 +15,8 @@
       class="card"
       *ngFor="let h of (habits$ | async); trackBy: trackById"
     >
-      <!-- GRID: 2 Reihen, 2 Spalten -->
       <div class="row">
-
-        <!-- Spalte links (Zeile 1) -->
+        <!-- Linke Spalte: Infos -->
         <div class="info">
           <div class="name">{{ h.name }}</div>
 
@@ -37,7 +36,7 @@
           </div>
         </div>
 
-        <!-- Spalte rechts (Zeile 1) -->
+        <!-- Rechte Spalte: Aktionen -->
         <div class="actions">
           <ion-button
             class="alarm"
@@ -53,8 +52,8 @@
             class="reset"
             fill="clear"
             size="small"
-            aria-label="Reset streak"
-            (click)="onResetStreakClick(h, $event)"
+            aria-label="Reset"
+            (click)="onResetClick(h, $event)"
           >
             <ion-icon name="refresh-outline" slot="icon-only"></ion-icon>
           </ion-button>
@@ -65,10 +64,12 @@
             size="small"
             aria-label="Delete"
             (click)="confirmDelete(h.id, $event)"
-          >✕</ion-button>
+          >
+            ✕
+          </ion-button>
         </div>
 
-        <!-- ZEILE 2: Timeline -->
+        <!-- Zeile 2: Timeline (volle Breite) -->
         <div class="timeline-row">
           <app-checkin-timeline
             [completedDays]="h.completedDays || []"
@@ -79,10 +80,8 @@
             [stepPx]="6"
             [showMonthLabels]="true"
             [startDateIso]="h.createdAt"
-            [epoch]="firstDayOfCurrentStreak(h.id)"
           ></app-checkin-timeline>
         </div>
-
       </div>
     </ion-item>
   </ion-list>
@@ -93,25 +92,15 @@
     header="Delete permanently?"
     message="This habit will be removed."
     [buttons]="alertButtons"
-    (didDismiss)="alertOpen = false">
-  </ion-alert>
+    (didDismiss)="alertOpen = false"
+  ></ion-alert>
 
-  <!-- Reset: Auswahl -->
-  <ion-alert
-    [isOpen]="resetChoiceOpen"
-    [header]="resetChoiceHeader"
-    [message]="'Select one or both options below.'"
-    [inputs]="resetChoiceInputs"
-    [buttons]="resetChoiceButtons"
-    (didDismiss)="onChoiceDismiss($event)">
-  </ion-alert>
-
-  <!-- Reset: Bestätigung -->
+  <!-- Reset-Confirm (einfach) -->
   <ion-alert
     [isOpen]="resetConfirmOpen"
-    [header]="resetConfirmHeader"
-    [message]="resetConfirmMessage"
+    header="Reset this habit?"
+    message="All data for this habit will be cleared. You can start again today."
     [buttons]="resetConfirmButtons"
-    (didDismiss)="resetConfirmOpen = false">
-  </ion-alert>
+    (didDismiss)="resetConfirmOpen = false"
+  ></ion-alert>
 </ion-content>

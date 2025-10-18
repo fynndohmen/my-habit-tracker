@@ -135,21 +135,15 @@ export class CheckinTimelineComponent implements OnChanges, AfterViewInit {
     this.scrollToRightIfOverflow();
   }
 
-  /** Scrollt nach ganz rechts (heute), *nur wenn* der Inhalt breiter ist als der Host.
-   *  Kurze Timelines bleiben unberührt → vorhandene Zentrierung (CSS/Elternlayout) bleibt erhalten.
-   */
+  /** Scrollt nach ganz rechts (heute), *nur wenn* der Inhalt breiter ist als der Host. */
   private scrollToRightIfOverflow(): void {
-    // Zwei rAFs, damit DOM/Layout sicher fertig ist.
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         const el = this.host.nativeElement;
-        // Falls der Host intern zusätzliche Wrapper hat, ist scrollWidth/Left des Hosts selbst korrekt,
-        // weil :host das Overflow handhabt.
-        const canScroll = el.scrollWidth > el.clientWidth + 1; // +1 gegen Rundungsartefakte
+        const canScroll = el.scrollWidth > el.clientWidth + 1;
         if (canScroll) {
-          el.scrollLeft = el.scrollWidth - el.clientWidth; // ganz rechts
+          el.scrollLeft = el.scrollWidth - el.clientWidth;
         }
-        // Wenn nicht scrollbar → nichts setzen (kein erzwungenes Links-Ausrichten).
       });
     });
   }
@@ -176,7 +170,6 @@ export class CheckinTimelineComponent implements OnChanges, AfterViewInit {
         todayDate.getMonth(),
         todayDate.getDate() - (this.daysBack - 1)
       ));
-      // sichtbarer Start = max(Fensterstart, earliestKey)
       earliestKey = (earliestKey > minKeyByDaysBack) ? earliestKey : minKeyByDaysBack;
     }
 
@@ -227,17 +220,32 @@ export class CheckinTimelineComponent implements OnChanges, AfterViewInit {
       }
     }
 
+    // ---- Barrieren bestimmen (aus epoch + barriers) ----
+    let barrierDay: string | null = null;
+    // epoch → Barriere = Vortag
+    if (this.epoch) {
+      const ed = new Date(this.epoch);
+      if (!isNaN(+ed)) {
+        const ek = this.dateKeyLocal(ed);
+        const prev = new Date(ek + 'T00:00:00');
+        prev.setDate(prev.getDate() - 1);
+        barrierDay = this.dateKeyLocal(prev);
+      }
+    }
+    // zusätzliche barriers (YYYY-MM-DD) – nimm die späteste
+    if (this.barriers?.length) {
+      const latest = [...this.barriers].filter(Boolean).sort().slice(-1)[0];
+      if (latest && (!barrierDay || latest > barrierDay)) barrierDay = latest;
+    }
+    const barrierWeek = barrierDay ? this.weekKeyOf(barrierDay) : null;
+    const barrierMonth = barrierDay ? this.monthKeyOf(barrierDay) : null;
+
     // ---- Färbung: blockweise – Farbe aus **gesamter** Historie berechnet ----
     const doneColored: DoneColored[] = [];
     const YELLOW = '#ffc400';
 
     if (this.period === 'day') {
-      // globale Blockfarben auf Tagesebene (Barrieren/Epoch beachten)
-      const barrier = (this.barriers && this.barriers.length)
-        ? [...this.barriers].sort().slice(-1)[0]
-        : undefined;
-      const epoch = this.epoch;
-
+      // globale Blockfarben auf Tagesebene (Barriere beachten)
       const colorByDay = new Map<string, string>();
 
       let i = 0;
@@ -245,7 +253,7 @@ export class CheckinTimelineComponent implements OnChanges, AfterViewInit {
         const k = globalKeys[i];
         if (!doneSet.has(k)) { i++; continue; }
 
-        // Block aufspannen (nur zusammenhängende Tage, Barrieren/Epoch stoppen)
+        // Block aufspannen (zusammenhängende Tage; auf Barriere stoppen)
         let j = i;
         while (j + 1 < globalKeys.length) {
           const a = globalKeys[j];
@@ -254,9 +262,8 @@ export class CheckinTimelineComponent implements OnChanges, AfterViewInit {
           const aNext = this.addDaysKey(a, 1);
           if (aNext !== b) break;
 
-          const crossesBarrier = barrier ? (a <= barrier && b > barrier) : false;
-          const crossesEpoch   = epoch   ? (a <  epoch   && b >= epoch)   : false;
-          if (crossesBarrier || crossesEpoch) break;
+          const crossesBarrier = barrierDay ? (a <= barrierDay && b > barrierDay) : false;
+          if (crossesBarrier) break;
 
           if (!doneSet.has(b)) break;
           j++;
@@ -275,18 +282,19 @@ export class CheckinTimelineComponent implements OnChanges, AfterViewInit {
       for (let idx = 0; idx < keys.length; idx++) {
         const k = keys[idx];
         if (!doneSet.has(k)) continue;
-        const c = colorByDay.get(k) ?? YELLOW; // falls globaler Block nicht erkannt wurde
+        const c = colorByDay.get(k) ?? YELLOW;
         doneColored.push({ x: tickXs[idx], color: c });
       }
     } else if (this.period === 'week') {
-      // Wochen: Blocks = aufeinanderfolgende **volle** Wochen; letzter Block darf aktuelle **partielle** Woche anhängen
+      // Wochen: Blocks = aufeinanderfolgende **volle** Wochen;
+      // letzte partielle Woche darf angehängt werden – aber NICHT über die Barriere verbinden.
       const byWeek = new Map<string, number>();
       for (const d of allDone) {
         const wk = this.weekKeyOf(d);
         byWeek.set(wk, (byWeek.get(wk) ?? 0) + 1);
       }
 
-      // globale Wochenliste (volle Historie)
+      // globale Wochenliste
       const firstWkGlobal = this.weekKeyOf(globalKeys[0]);
       const lastWkGlobal  = this.weekKeyOf(globalKeys[globalKeys.length - 1]);
       const weeksGlobal: string[] = [];
@@ -299,27 +307,34 @@ export class CheckinTimelineComponent implements OnChanges, AfterViewInit {
         }
       }
 
-      const isFull = (wk: string) => (byWeek.get(wk) ?? 0) >= Math.max(1, this.target || 1);
+      const goal = Math.max(1, this.target || 1);
+      const isFull = (wk: string) => (byWeek.get(wk) ?? 0) >= goal;
       const thisWk = this.weekKeyOf(today);
       const cntThis = byWeek.get(thisWk) ?? 0;
 
-      // Blöcke global ermitteln
       const blocks: string[][] = [];
       let cur: string[] = [];
+      let prevWk: string | null = null;
       for (const wk of weeksGlobal) {
+        // Barriere-Kante erzwingen: wenn wir die Barriere überschreiten, Block hart beenden
+        const crossedBarrier = barrierWeek && prevWk ? (prevWk <= barrierWeek && wk > barrierWeek) : false;
+        if (crossedBarrier && cur.length) { blocks.push(cur); cur = []; }
+
         if (isFull(wk)) {
-          if (!cur.length) cur = [wk]; else cur.push(wk);
+          cur.push(wk);
         } else {
           if (cur.length) { blocks.push(cur); cur = []; }
         }
+        prevWk = wk;
       }
       if (cur.length) blocks.push(cur);
 
-      // aktuelle partielle Woche ggf. anhängen
+      // aktuelle partielle Woche nur anhängen, wenn letzter Block NACH der Barriere liegt
       if (blocks.length > 0 && cntThis > 0) {
         const lastBlock = blocks[blocks.length - 1];
-        const nextToLast = this.nextIsoWeek(lastBlock[lastBlock.length - 1]);
-        if (nextToLast === thisWk) {
+        const lastWkInLastBlock = lastBlock[lastBlock.length - 1];
+        const isAfterBarrier = !barrierWeek || lastWkInLastBlock > barrierWeek;
+        if (isAfterBarrier && this.nextIsoWeek(lastWkInLastBlock) === thisWk) {
           lastBlock.push(thisWk);
         }
       }
@@ -342,6 +357,8 @@ export class CheckinTimelineComponent implements OnChanges, AfterViewInit {
         doneColored.push({ x: tickXs[idx], color: col });
       }
     } else { // month
+      // Monate: wie Wochen – Blocks sind volle Monate; aktueller partieller Monat darf angehängt werden,
+      // aber nicht über die Barriere.
       const byMonth = new Map<string, number>();
       for (const d of allDone) {
         const mk = this.monthKeyOf(d);
@@ -360,25 +377,34 @@ export class CheckinTimelineComponent implements OnChanges, AfterViewInit {
         }
       }
 
-      const isFullM = (mk: string) => (byMonth.get(mk) ?? 0) >= Math.max(1, this.target || 1);
+      const goal = Math.max(1, this.target || 1);
+      const isFullM = (mk: string) => (byMonth.get(mk) ?? 0) >= goal;
       const thisMk = this.monthKeyOf(today);
       const cntThisM = byMonth.get(thisMk) ?? 0;
 
       const blocksM: string[][] = [];
       let curM: string[] = [];
+      let prevMk: string | null = null;
       for (const mk of monthsGlobal) {
+        const crossedBarrier = barrierMonth && prevMk ? (prevMk <= barrierMonth && mk > barrierMonth) : false;
+        if (crossedBarrier && curM.length) { blocksM.push(curM); curM = []; }
+
         if (isFullM(mk)) {
-          if (!curM.length) curM = [mk]; else curM.push(mk);
+          curM.push(mk);
         } else {
           if (curM.length) { blocksM.push(curM); curM = []; }
         }
+        prevMk = mk;
       }
       if (curM.length) blocksM.push(curM);
 
       if (blocksM.length > 0 && cntThisM > 0) {
         const lastBlock = blocksM[blocksM.length - 1];
-        const nextToLast = this.nextMonthKey(lastBlock[lastBlock.length - 1]);
-        if (nextToLast === thisMk) lastBlock.push(thisMk);
+        const lastMkInLastBlock = lastBlock[lastBlock.length - 1];
+        const isAfterBarrier = !barrierMonth || lastMkInLastBlock > barrierMonth;
+        if (isAfterBarrier && this.nextMonthKey(lastMkInLastBlock) === thisMk) {
+          lastBlock.push(thisMk);
+        }
       }
 
       const colorByMonth = new Map<string, string>();

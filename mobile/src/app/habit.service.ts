@@ -35,14 +35,6 @@ export interface Habit {
   /** Optional: Marker für Wochen/Monat-Streaks */
   lastFullCompleteWeek?: string;   // z. B. '2025-W42'
   lastFullCompleteMonth?: string;  // z. B. '2025-10'
-
-  /**
-   * Zusatz für gefahrlosen Current-Reset (ohne Historie zu löschen):
-   * - streakBarriers: Liste harter Grenzen (YYYY-MM-DD); beim Rückwärtszählen muss cursor > Barriere bleiben
-   * - streakEpoch: inklusiver Start der *aktuellen* Serie (YYYY-MM-DD); cursor darf nicht kleiner sein
-   */
-  streakBarriers?: string[];
-  streakEpoch?: string;
 }
 
 /** UI-Progress */
@@ -90,37 +82,25 @@ function dayDiff(aKey: string, bKey: string): number {
 }
 
 // ====== Streak-Berechnungen aus completedDays ======
-/**
- * Tages-Streaks (period='day'):
- * - minExclusive: harte Sperre (z. B. letzte Barriere: „> minExclusive“)
- * - minInclusive: Epoch (aktueller Serienstart) – zählt nur solange cursor >= minInclusive
- */
-function computeDaily(
-  allDays: string[],
-  todayKey: string,
-  minExclusive?: string,
-  minInclusive?: string,
-) {
+/** Tages-Streaks (period='day'): aufeinanderfolgende Kalendertage */
+function computeDaily(allDays: string[], todayKey: string) {
   const days = Array.from(new Set(allDays)).sort(); // aufsteigend
   if (days.length === 0) {
     return { current: 0, histLongest: 0, lastFullDate: undefined as string | undefined };
   }
 
-  // historisches Maximum (nur informativ)
+  // historisches Maximum (nur informativ – nicht mehr zum Überschreiben genutzt)
   let histLongest = 1, run = 1;
   for (let i = 1; i < days.length; i++) {
     run = (dayDiff(days[i], days[i - 1]) === 1) ? run + 1 : 1;
     if (run > histLongest) histLongest = run;
   }
 
-  // aktueller Streak rückwärts ab heute – respektiert Sperren/Epoch
+  // aktueller Streak rückwärts ab heute
   let current = 0;
   const set = new Set(days);
   let cursor = todayKey;
   while (set.has(cursor)) {
-    if (minExclusive && !(cursor > minExclusive)) break;
-    if (minInclusive && cursor < minInclusive) break;
-
     current++;
     const d = keyToDate(cursor);
     d.setDate(d.getDate() - 1);
@@ -179,13 +159,18 @@ function computeWeekly(allDays: string[], targetPerWeek: number, todayKey: strin
     prev = wk;
   }
 
-  // aktueller Streak: bis zur letzten vollen Woche (wenn diese Woche nicht voll ist)
+  // aktueller Streak:
+  // ALT: ab *aktueller* Woche rückwärts, nur solange Wochen voll sind (führte zu 0, wenn aktuelle Woche nicht voll war).
+  // NEU: wenn aktuelle Woche nicht voll ist, starte bei der *letzten vollen* Woche davor.
   const thisWeek = weekKeyOf(todayKey);
-  const start = ((byWeek.get(thisWeek) ?? 0) >= targetPerWeek) ? thisWeek : prevIsoWeek(thisWeek);
+  const isFullWk = (wk: string) => (byWeek.get(wk) ?? 0) >= Math.max(1, targetPerWeek || 1);
 
   let current = 0;
-  let cursor = start;
-  while ((byWeek.get(cursor) ?? 0) >= targetPerWeek) {
+  let cursor = thisWeek;
+  if (!isFullWk(cursor)) {
+    cursor = prevIsoWeek(cursor); // zur letzten abgeschlossenen vollen Woche springen
+  }
+  while (isFullWk(cursor)) {
     current++;
     cursor = prevIsoWeek(cursor);
   }
@@ -231,19 +216,181 @@ function computeMonthly(allDays: string[], targetPerMonth: number, todayKey: str
     prev = mk;
   }
 
-  // aktueller Streak: bis zum letzten vollen Monat (wenn dieser Monat nicht voll ist)
+  // aktueller Streak (analog zur Woche):
   const thisMonth = monthKeyOf(todayKey);
-  const start = ((byMonth.get(thisMonth) ?? 0) >= targetPerMonth) ? thisMonth : prevMonthKey(thisMonth);
+  const isFullM = (mk: string) => (byMonth.get(mk) ?? 0) >= Math.max(1, targetPerMonth || 1);
 
   let current = 0;
-  let cursor = start;
-  while ((byMonth.get(cursor) ?? 0) >= targetPerMonth) {
+  let cursor = thisMonth;
+  if (!isFullM(cursor)) {
+    cursor = prevMonthKey(cursor); // auf letzten vollen Monat springen
+  }
+  while (isFullM(cursor)) {
     current++;
     cursor = prevMonthKey(cursor);
   }
 
   const lastFullMonth = [...months].reverse().find(mk => (byMonth.get(mk) ?? 0) >= targetPerMonth);
   return { current, histLongest, lastFullMonth };
+}
+
+/* =======================
+   NEU: Momentum-Tage (Farblogik)
+   ======================= */
+
+/** Daily: Momentum-Tage = Streak-Länge in Tagen (current / max). */
+function computeMomentumDailyDays(allDays: string[], todayKey: string) {
+  const { current, histLongest } = computeDaily(allDays, todayKey);
+  return { currentDays: current, longestDays: histLongest };
+}
+
+/** Weekly: Momentum-Tage = Summe der Tage in aufeinanderfolgenden *vollen* Wochen;
+ *  für *current* werden Tage der *aktuellen* (noch nicht vollen) Woche angehängt.
+ *  Für *longest* wird außerdem „Block + direkt folgende unvollständige Woche mit Tagen“ geprüft.
+ */
+function computeMomentumWeeklyDays(allDays: string[], targetPerWeek: number, todayKey: string) {
+  const byWeek = new Map<string, number>();
+  for (const k of allDays) {
+    const wk = weekKeyOf(k);
+    byWeek.set(wk, (byWeek.get(wk) ?? 0) + 1);
+  }
+  if (byWeek.size === 0) return { currentDays: 0, longestDays: 0 };
+
+  const isFull = (wk: string) => (byWeek.get(wk) ?? 0) >= Math.max(1, targetPerWeek || 1);
+
+  // chronologische Wochen von erstem bis letztem Datum
+  const sortedDays = Array.from(new Set(allDays)).sort();
+  const firstWk = weekKeyOf(sortedDays[0]);
+  const lastWk = weekKeyOf(sortedDays[sortedDays.length - 1]);
+
+  const weeks: string[] = [];
+  {
+    let wk = firstWk;
+    while (true) {
+      weeks.push(wk);
+      if (wk === lastWk) break;
+      wk = nextIsoWeek(wk);
+    }
+  }
+
+  // Blöcke voller Wochen
+  type Block = { weeks: string[]; totalDays: number };
+  const blocks: Block[] = [];
+  let cur: string[] = [];
+  for (const wk of weeks) {
+    if (isFull(wk)) {
+      cur.push(wk);
+    } else {
+      if (cur.length) {
+        blocks.push({ weeks: [...cur], totalDays: [...cur].reduce((s, w) => s + (byWeek.get(w) ?? 0), 0) });
+        cur = [];
+      }
+    }
+  }
+  if (cur.length) {
+    blocks.push({ weeks: [...cur], totalDays: [...cur].reduce((s, w) => s + (byWeek.get(w) ?? 0), 0) });
+  }
+
+  const thisWk = weekKeyOf(todayKey);
+  const cntThis = byWeek.get(thisWk) ?? 0;
+
+  // currentDays
+  let currentDays = 0;
+  if (isFull(thisWk)) {
+    const blk = blocks.find(b => b.weeks.includes(thisWk));
+    currentDays = blk ? blk.totalDays : 0;
+  } else if (cntThis > 0) {
+    // ggf. an letzten vollen Block anhängen
+    const prevWk = prevIsoWeek(thisWk);
+    const blk = blocks.find(b => b.weeks[b.weeks.length - 1] === prevWk);
+    currentDays = (blk?.totalDays ?? 0) + cntThis;
+  } else {
+    currentDays = 0;
+  }
+
+  // longestDays = max(block.totalDays) und „Block + direkt folgende unvollständige Woche mit Tagen“
+  let longestDays = 0;
+  for (const b of blocks) {
+    if (b.totalDays > longestDays) longestDays = b.totalDays;
+    const nextWk = nextIsoWeek(b.weeks[b.weeks.length - 1]);
+    const cntNext = byWeek.get(nextWk) ?? 0;
+    if (!isFull(nextWk) && cntNext > 0) {
+      const withPartial = b.totalDays + cntNext;
+      if (withPartial > longestDays) longestDays = withPartial;
+    }
+  }
+
+  return { currentDays, longestDays };
+}
+
+/** Monthly analog zu Weekly. */
+function computeMomentumMonthlyDays(allDays: string[], targetPerMonth: number, todayKey: string) {
+  const byMonth = new Map<string, number>();
+  for (const k of allDays) {
+    const mk = monthKeyOf(k);
+    byMonth.set(mk, (byMonth.get(mk) ?? 0) + 1);
+  }
+  if (byMonth.size === 0) return { currentDays: 0, longestDays: 0 };
+
+  const isFull = (mk: string) => (byMonth.get(mk) ?? 0) >= Math.max(1, targetPerMonth || 1);
+
+  const sortedDays = Array.from(new Set(allDays)).sort();
+  const firstMk = monthKeyOf(sortedDays[0]);
+  const lastMk  = monthKeyOf(sortedDays[sortedDays.length - 1]);
+
+  const months: string[] = [];
+  {
+    let mk = firstMk;
+    while (true) {
+      months.push(mk);
+      if (mk === lastMk) break;
+      mk = nextMonthKey(mk);
+    }
+  }
+
+  type Block = { months: string[]; totalDays: number };
+  const blocks: Block[] = [];
+  let cur: string[] = [];
+  for (const mk of months) {
+    if (isFull(mk)) cur.push(mk);
+    else {
+      if (cur.length) {
+        blocks.push({ months: [...cur], totalDays: [...cur].reduce((s, m) => s + (byMonth.get(m) ?? 0), 0) });
+        cur = [];
+      }
+    }
+  }
+  if (cur.length) {
+    blocks.push({ months: [...cur], totalDays: [...cur].reduce((s, m) => s + (byMonth.get(m) ?? 0), 0) });
+  }
+
+  const thisMk = monthKeyOf(todayKey);
+  const cntThis = byMonth.get(thisMk) ?? 0;
+
+  let currentDays = 0;
+  if (isFull(thisMk)) {
+    const blk = blocks.find(b => b.months.includes(thisMk));
+    currentDays = blk ? blk.totalDays : 0;
+  } else if (cntThis > 0) {
+    const prevMk = prevMonthKey(thisMk);
+    const blk = blocks.find(b => b.months[b.months.length - 1] === prevMk);
+    currentDays = (blk?.totalDays ?? 0) + cntThis;
+  } else {
+    currentDays = 0;
+  }
+
+  let longestDays = 0;
+  for (const b of blocks) {
+    if (b.totalDays > longestDays) longestDays = b.totalDays;
+    const nextMk = nextMonthKey(b.months[b.months.length - 1]);
+    const cntNext = byMonth.get(nextMk) ?? 0;
+    if (!isFull(nextMk) && cntNext > 0) {
+      const withPartial = b.totalDays + cntNext;
+      if (withPartial > longestDays) longestDays = withPartial;
+    }
+  }
+
+  return { currentDays, longestDays };
 }
 
 @Injectable({ providedIn: 'root' })
@@ -278,8 +425,6 @@ export class HabitService {
       notifications: notifications ?? [],
       createdAt: nowIso(),
       updatedAt: nowIso(),
-      streakBarriers: [],
-      streakEpoch: undefined,
     };
 
     const next = [...this.normalizeAll(this._state$.value), newHabit];
@@ -438,6 +583,41 @@ export class HabitService {
     return { count: clipped, target: habit.target, percent };
   }
 
+  // ===== Momentum-APIs (NEU) =====
+  /** Momentum-Tage der *aktuellen* Serie – für Farbgebung von Current (alle Perioden). */
+  currentMomentumDays(id: string): number {
+    const h = this._state$.value.find(x => x.id === id);
+    if (!h) return 0;
+    const today = dateKeyLocal();
+    const all = Array.from(new Set(h.completedDays)).sort();
+
+    if (h.period === 'day') {
+      return computeMomentumDailyDays(all, today).currentDays;
+    }
+    if (h.period === 'week') {
+      return computeMomentumWeeklyDays(all, h.target, today).currentDays;
+    }
+    // month
+    return computeMomentumMonthlyDays(all, h.target, today).currentDays;
+  }
+
+  /** Höchste jemals erreichte Momentum-Tage – für Farbgebung von Longest (alle Perioden). */
+  longestMomentumDays(id: string): number {
+    const h = this._state$.value.find(x => x.id === id);
+    if (!h) return 0;
+    const today = dateKeyLocal();
+    const all = Array.from(new Set(h.completedDays)).sort();
+
+    if (h.period === 'day') {
+      return computeMomentumDailyDays(all, today).longestDays;
+    }
+    if (h.period === 'week') {
+      return computeMomentumWeeklyDays(all, h.target, today).longestDays;
+    }
+    // month
+    return computeMomentumMonthlyDays(all, h.target, today).longestDays;
+  }
+
   // Public getters
   currentStreak(id: string): number {
     const h = this._state$.value.find((x) => x.id === id);
@@ -454,112 +634,6 @@ export class HabitService {
     return hh.longestStreak;
   }
   getLongestStreak(id: string): number { return this.longestStreak(id); }
-
-  /**
-   * **Aktuelle Momentum-Tage** (für Farbe auf der Main-Seite).
-   * Respektiert für daily die Barriere(n) *und* den Epoch-Start.
-   */
-  currentMomentumDays(id: string): number {
-    const h = this._state$.value.find((x) => x.id === id);
-    if (!h) return 0;
-    const habit = this.normalize(h);
-    const allDays = Array.from(new Set(habit.completedDays ?? [])).sort();
-    if (!allDays.length) return 0;
-
-    const today = dateKeyLocal();
-
-    if (habit.period === 'day') {
-      const set = new Set(allDays);
-      if (!set.has(today)) return 0;
-
-      const barrier = (habit.streakBarriers && habit.streakBarriers.length)
-        ? habit.streakBarriers.reduce((a, b) => (a > b ? a : b))
-        : undefined;
-
-      const epoch = habit.streakEpoch;
-
-      let run = 0;
-      let cursor = today;
-      while (set.has(cursor)) {
-        if (barrier && !(cursor > barrier)) break;
-        if (epoch && cursor < epoch) break;
-
-        run++;
-        const d = keyToDate(cursor);
-        d.setDate(d.getDate() - 1);
-        cursor = dateKeyLocal(d);
-      }
-      return run;
-    }
-
-    if (habit.period === 'week') {
-      const target = Math.max(1, habit.target || 1);
-      const byWeek = new Map<string, number>();
-      for (const k of allDays) {
-        const wk = weekKeyOf(k);
-        byWeek.set(wk, (byWeek.get(wk) ?? 0) + 1);
-      }
-
-      const todayWk = weekKeyOf(today);
-      const cntThis = byWeek.get(todayWk) ?? 0;
-      const isThisFull = cntThis >= target;
-
-      const sumFullWeeksFrom = (startWk: string): number => {
-        let days = 0, wk = startWk;
-        while ((byWeek.get(wk) ?? 0) >= target) {
-          days += byWeek.get(wk)!;
-          wk = prevIsoWeek(wk);
-        }
-        return days;
-      };
-
-      if (isThisFull) return sumFullWeeksFrom(todayWk);
-      if (cntThis > 0) {
-        const prev = prevIsoWeek(todayWk);
-        if ((byWeek.get(prev) ?? 0) >= target) {
-          return sumFullWeeksFrom(prev) + cntThis;
-        }
-        return cntThis;
-      }
-      return 0;
-    }
-
-    // month
-    if (habit.period === 'month') {
-      const target = Math.max(1, habit.target || 1);
-      const byMonth = new Map<string, number>();
-      for (const k of allDays) {
-        const mk = monthKeyOf(k);
-        byMonth.set(mk, (byMonth.get(mk) ?? 0) + 1);
-      }
-
-      const thisMonth = monthKeyOf(today);
-      const cntThis = byMonth.get(thisMonth) ?? 0;
-      const isThisFull = cntThis >= target;
-
-      const sumFullMonthsFrom = (startMk: string): number => {
-        let days = 0, mk = startMk;
-        while ((byMonth.get(mk) ?? 0) >= target) {
-          days += byMonth.get(mk)!;
-          mk = prevMonthKey(mk);
-        }
-        return days;
-      };
-
-      if (isThisFull) return sumFullMonthsFrom(thisMonth);
-      if (cntThis > 0) {
-        const prev = prevMonthKey(thisMonth);
-        if ((byMonth.get(prev) ?? 0) >= target) {
-          return sumFullMonthsFrom(prev) + cntThis;
-        }
-        return cntThis;
-      }
-      return 0;
-    }
-
-    return 0;
-  }
-  getCurrentMomentumDays(id: string): number { return this.currentMomentumDays(id); }
 
   // === Notifications ===
   getHabitByIdSync(id: string): Habit | undefined {
@@ -588,12 +662,34 @@ export class HabitService {
     this.commit(next);
   }
 
-  /** ========== Reset-APIs ========== */
+  /** ========== Voll-Reset: alles löschen, heute frei lassen ========== */
+  async resetHabitCompletely(id: string): Promise<void> {
+    const today = dateKeyLocal();
+    const next = this._state$.value.map(h => {
+      if (h.id !== id) return h;
+      const cleared: Habit = {
+        ...h,
+        completedDays: [],              // gesamte Timeline leer
+        todayCount: 0,                  // aktueller Zeitraum leer
+        lastCountDate: today,           // Zeitraum startet neu (Tag/Woche/Monat wird beim Rendern als „frei“ gezeigt)
+        lastFullCompleteDate: undefined,
+        currentStreak: 0,
+        longestStreak: 0,
+        lastFullCompleteWeek: undefined,
+        lastFullCompleteMonth: undefined,
+        createdAt: nowIso(),            // Sichtfenster startet „heute“
+        updatedAt: nowIso(),
+      };
+      return this.recomputeDerived(cleared);
+    });
+    this.commit(next);
+  }
+
+  /** ========== Reset-APIs (bestehend) ========== */
 
   /** Current Streak gezielt auf 0 setzen (ohne Longest zu verringern). */
   async resetCurrentStreak(id: string): Promise<void> {
     const today = dateKeyLocal();
-    const yesterday = yesterdayKeyLocal();
 
     const next = this._state$.value.map(h => {
       if (h.id !== id) return h;
@@ -601,22 +697,10 @@ export class HabitService {
       const prevLongest = hh.longestStreak;
 
       if (hh.period === 'day') {
-        // 1) Heutigen DONE-Eintrag (falls vorhanden) entfernen -> heutiger Tick wird frei
-        if (hh.completedDays.includes(today)) {
-          hh.completedDays = hh.completedDays.filter(k => k !== today);
-        }
-        // 2) Aktuellen Zähler leeren
+        // „heute“ rausnehmen → current=0
+        hh.completedDays = hh.completedDays.filter(k => k !== today);
         hh.todayCount = 0;
         hh.lastFullCompleteDate = undefined;
-
-        // 3) Grenzen für die *aktuelle* Serie setzen:
-        //    - Barriere = gestern (verhindert Brücken in die alte Serie)
-        const barriers = Array.isArray(hh.streakBarriers) ? hh.streakBarriers : [];
-        if (!barriers.includes(yesterday)) barriers.push(yesterday);
-        hh.streakBarriers = barriers;
-        //    - Epoch = heute (nur zur Absicherung; sichtbares Verhalten: Current bleibt 0 bis erneut erledigt)
-        hh.streakEpoch = today;
-
       } else if (hh.period === 'week') {
         const wk = weekKeyOf(today);
         const inWeek = hh.completedDays.filter(d => weekKeyOf(d) === wk).sort();
@@ -679,15 +763,15 @@ export class HabitService {
       hh.todayCount = 0;
       hh.lastCountDate = today;
       hh.lastFullCompleteDate = undefined;
-      hh.streakBarriers = [];
-      hh.streakEpoch = undefined;
       if (resetStartToToday) hh.createdAt = nowIso();
       hh.updatedAt = nowIso();
 
       hh = this.recomputeDerived(hh);
+      // Longest behalten, wenn gewünscht
       if (preserveLongest && hh.longestStreak < prevLongest) {
         hh.longestStreak = prevLongest;
       }
+      // Current nach Timeline-Reset = 0
       hh.currentStreak = 0;
       return hh;
     });
@@ -705,8 +789,6 @@ export class HabitService {
       target: Math.max(1, Math.floor(h.target || 1)),
       notifications: Array.isArray((h as any).notifications) ? h.notifications : [],
       completedDays: Array.isArray((h as any).completedDays) ? h.completedDays : [],
-      streakBarriers: Array.isArray((h as any).streakBarriers) ? (h as any).streakBarriers : [],
-      streakEpoch: (h as any).streakEpoch,
     };
 
     if (!safe.lastCountDate) {
@@ -751,20 +833,13 @@ export class HabitService {
    * Leite current/Marker neu ab.
    * WICHTIG: longestStreak ist ein persistierter Rekord und wird **nur erhöht**,
    * wenn der aktuelle Streak ihn übertrifft. Historische Maxima aus completedDays
-   * überschreiben longestStreak NICHT automatisch (damit „Reset Longest“ wirkt).
+   * überschreiben longestStreak NICHT mehr automatisch (damit „Reset Longest“ wirkt).
    */
   private recomputeDerived(h: Habit): Habit {
     const today = dateKeyLocal();
 
     if (h.period === 'day') {
-      const barrier = (h.streakBarriers && h.streakBarriers.length)
-        ? h.streakBarriers.reduce((a, b) => (a > b ? a : b))
-        : undefined;
-
-      const epoch = h.streakEpoch;
-
-      const { current, /*histLongest,*/ lastFullDate } =
-        computeDaily(h.completedDays, today, barrier, epoch);
+      const { current, /*histLongest,*/ lastFullDate } = computeDaily(h.completedDays, today);
       const newLongest = Math.max(h.longestStreak ?? 0, current);
       return {
         ...h,
@@ -775,8 +850,7 @@ export class HabitService {
     }
 
     if (h.period === 'week') {
-      const { current, /*histLongest,*/ lastFullWeek } =
-        computeWeekly(h.completedDays, h.target, today);
+      const { current, /*histLongest,*/ lastFullWeek } = computeWeekly(h.completedDays, h.target, today);
       const newLongest = Math.max(h.longestStreak ?? 0, current);
       return {
         ...h,
@@ -787,8 +861,7 @@ export class HabitService {
     }
 
     // month
-    const { current, /*histLongest,*/ lastFullMonth } =
-      computeMonthly(h.completedDays, h.target, today);
+    const { current, /*histLongest,*/ lastFullMonth } = computeMonthly(h.completedDays, h.target, today);
     const newLongest = Math.max(h.longestStreak ?? 0, current);
     return {
       ...h,
@@ -837,9 +910,6 @@ export class HabitService {
 
           lastFullCompleteWeek: h?.lastFullCompleteWeek,
           lastFullCompleteMonth: h?.lastFullCompleteMonth,
-
-          streakBarriers: Array.isArray(h?.streakBarriers) ? h.streakBarriers : [],
-          streakEpoch: h?.streakEpoch,
         };
         return out;
       });

@@ -12,6 +12,9 @@ import type { IonRouterOutlet } from '@ionic/angular';
 // Optional: falls du „Doppelt drücken zum Beenden“ wirklich mit App-Exit willst
 // import { App as CapacitorApp } from '@capacitor/app';
 
+// Erinnerungen vorbereiten (Einmal-Init beim Start)
+import { NotificationService } from './services/notification.service';
+
 @Component({
   standalone: true,
   selector: 'app-root',
@@ -44,9 +47,12 @@ export class AppComponent {
     private platform: Platform,
     private router: Router,
     private navCtrl: NavController,
-    private toastCtrl: ToastController
+    private toastCtrl: ToastController,
+    private notif: NotificationService,              // <— hinzugefügt
   ) {
     this.initBackHandling();
+    // Erinnerungen beim Start einmalig vorbereiten
+    this.platform.ready().then(() => this.notif.init());
   }
 
   private initBackHandling() {

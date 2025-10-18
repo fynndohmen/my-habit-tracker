@@ -1,14 +1,12 @@
+<!-- mobile/src/app/pages/habits/habits.page.html -->
 <ion-header>
-  <!-- Titel-Zeile -->
   <ion-toolbar>
     <ion-title>Habits</ion-title>
   </ion-toolbar>
 
-  <!-- Aktionen direkt unter dem Titel, stabil in allen WebViews -->
   <ion-toolbar class="header-actions">
     <div class="top-row">
       <a class="top-btn add" [routerLink]="['/add']" aria-label="New habit">+</a>
-
       <a class="top-btn settings" [routerLink]="['/settings']" aria-label="Settings">
         <span class="dot"></span><span class="dot"></span><span class="dot"></span>
       </a>
@@ -48,7 +46,6 @@
     </ion-item>
   </ion-list>
 
-  <!-- Deutsch: Auswahl-Dialog NACH dem Halten, wenn gestern nicht erledigt war -->
   <ion-alert
     [isOpen]="chooseDayOpen"
     header="You skipped yesterday"
